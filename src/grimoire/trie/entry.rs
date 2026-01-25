@@ -138,6 +138,24 @@ impl IDComparer {
     }
 }
 
+/// Implementation of Sortable trait for Entry.
+///
+/// This allows Entry to be used with the algorithm::sort function,
+/// which implements the same depth-based sorting as the C++ version.
+impl<'a> crate::grimoire::algorithm::sort::Sortable for Entry<'a> {
+    fn get(&self, index: usize) -> Option<u8> {
+        if index < self.length() {
+            Some(Entry::get(self, index))
+        } else {
+            None
+        }
+    }
+
+    fn length(&self) -> usize {
+        Entry::length(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

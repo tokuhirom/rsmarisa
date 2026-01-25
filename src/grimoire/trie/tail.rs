@@ -132,24 +132,16 @@ impl Tail {
         offsets: &mut Vector<u32>,
         mode: TailMode,
     ) {
-        use crate::grimoire::trie::entry::{Entry, StringComparer};
+        use crate::grimoire::trie::entry::Entry;
 
         // Set IDs for all entries
         for i in 0..entries.size() {
             entries[i].set_id(i);
         }
 
-        // Sort entries by string content (in reverse)
+        // Sort entries using the same algorithm as C++
         let entries_slice = entries.as_mut_slice();
-        entries_slice.sort_by(|a, b| {
-            if StringComparer::compare(a, b) {
-                std::cmp::Ordering::Greater
-            } else if StringComparer::compare(b, a) {
-                std::cmp::Ordering::Less
-            } else {
-                std::cmp::Ordering::Equal
-            }
-        });
+        crate::grimoire::algorithm::sort::sort(entries_slice);
 
         let mut temp_offsets: Vector<u32> = Vector::new();
         temp_offsets.resize(entries.size(), 0);

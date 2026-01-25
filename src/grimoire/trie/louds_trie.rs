@@ -140,13 +140,26 @@ impl LoudsTrie {
 
     /// Returns the I/O size in bytes.
     pub fn io_size(&self) -> usize {
-        self.louds.io_size()
+        use crate::grimoire::trie::header::Header;
+        use std::mem::size_of;
+
+        let mut size = Header::new().io_size()
+            + self.louds.io_size()
             + self.terminal_flags.io_size()
             + self.link_flags.io_size()
             + self.bases.io_size()
             + self.extras.io_size()
-            + self.tail.io_size()
-            + self.next_trie.as_ref().map_or(0, |t| t.io_size())
+            + self.tail.io_size();
+
+        // Add next_trie size (excluding its header to avoid double-counting)
+        if let Some(ref next) = self.next_trie {
+            size += next.io_size() - Header::new().io_size();
+        }
+
+        // Add cache size and two uint32 values (num_l1_nodes, config)
+        size += self.cache.io_size() + (size_of::<u32>() * 2);
+
+        size
     }
 
     /// Clears the trie to empty state.
