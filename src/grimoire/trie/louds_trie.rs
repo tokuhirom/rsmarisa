@@ -145,6 +145,51 @@ impl LoudsTrie {
     pub fn swap(&mut self, other: &mut LoudsTrie) {
         std::mem::swap(self, other);
     }
+
+    // TODO: Implement I/O methods (map, read, write)
+    // These require BitVector, FlatVector, and Tail to have proper I/O support
+
+    // Helper methods
+
+    /// Gets cache ID from node ID and label.
+    #[inline]
+    fn get_cache_id_with_label(&self, node_id: usize, label: u8) -> usize {
+        (node_id ^ (node_id << 5) ^ (label as usize)) & self.cache_mask
+    }
+
+    /// Gets cache ID from node ID only.
+    #[inline]
+    fn get_cache_id(&self, node_id: usize) -> usize {
+        node_id & self.cache_mask
+    }
+
+    /// Gets link value from a node.
+    #[inline]
+    fn get_link_simple(&self, node_id: usize) -> usize {
+        let base = self.bases[node_id] as usize;
+        let extra_idx = self.link_flags.rank1(node_id);
+        let extra = self.extras.get(extra_idx) as usize;
+        base | (extra * 256)
+    }
+
+    /// Gets link value from a node with specific link ID.
+    #[inline]
+    fn get_link_with_id(&self, node_id: usize, link_id: usize) -> usize {
+        let base = self.bases[node_id] as usize;
+        let extra = self.extras.get(link_id) as usize;
+        base | (extra * 256)
+    }
+
+    /// Updates link ID for iteration.
+    #[inline]
+    fn update_link_id(&self, link_id: usize, node_id: usize) -> usize {
+        use crate::base::INVALID_LINK_ID;
+        if link_id == INVALID_LINK_ID as usize {
+            self.link_flags.rank1(node_id)
+        } else {
+            link_id + 1
+        }
+    }
 }
 
 #[cfg(test)]
