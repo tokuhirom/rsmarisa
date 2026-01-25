@@ -121,6 +121,190 @@ impl Tail {
         Ok(())
     }
 
+    /// Restores a key from the tail at the given offset.
+    ///
+    /// Appends the tail string to the agent's key buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `agent` - Agent containing the state with key buffer
+    /// * `offset` - Offset into the tail buffer
+    pub fn restore(&self, agent: &mut crate::agent::Agent, offset: usize) {
+        assert!(!self.buf.empty(), "Tail buffer is empty");
+
+        let state = agent.state_mut().expect("Agent must have state");
+
+        if self.end_flags.empty() {
+            // Text mode: read until NULL terminator
+            let mut i = offset;
+            while i < self.buf.size() && self.buf[i] != 0 {
+                state.key_buf_mut().push(self.buf[i]);
+                i += 1;
+            }
+        } else {
+            // Binary mode: read until end flag
+            let mut i = offset;
+            loop {
+                state.key_buf_mut().push(self.buf[i]);
+                if self.end_flags.get(i) {
+                    break;
+                }
+                i += 1;
+            }
+        }
+    }
+
+    /// Matches query against tail at the given offset.
+    ///
+    /// Returns true if the remaining query matches the tail string.
+    ///
+    /// # Arguments
+    ///
+    /// * `agent` - Agent containing the query and state
+    /// * `offset` - Offset into the tail buffer
+    pub fn match_tail(&self, agent: &mut crate::agent::Agent, offset: usize) -> bool {
+        assert!(!self.buf.empty(), "Tail buffer is empty");
+
+        // Get query bytes to avoid borrow conflicts
+        let query_bytes = agent.query().as_bytes().to_vec();
+        let mut query_pos = agent
+            .state()
+            .expect("Agent must have state")
+            .query_pos();
+
+        assert!(query_pos < query_bytes.len(), "Query position out of bounds");
+
+        if self.end_flags.empty() {
+            // Text mode
+            let start_offset = offset - query_pos;
+            loop {
+                if self.buf[start_offset + query_pos] != query_bytes[query_pos] {
+                    return false;
+                }
+                query_pos += 1;
+                agent.state_mut().expect("Agent must have state").set_query_pos(query_pos);
+
+                if start_offset + query_pos >= self.buf.size()
+                    || self.buf[start_offset + query_pos] == 0
+                {
+                    return true;
+                }
+
+                if query_pos >= query_bytes.len() {
+                    return false;
+                }
+            }
+        } else {
+            // Binary mode
+            let mut i = offset;
+            loop {
+                if self.buf[i] != query_bytes[query_pos] {
+                    return false;
+                }
+                query_pos += 1;
+                agent.state_mut().expect("Agent must have state").set_query_pos(query_pos);
+
+                let is_end = self.end_flags.get(i);
+                i += 1;
+
+                if is_end {
+                    return true;
+                }
+
+                if query_pos >= query_bytes.len() {
+                    return false;
+                }
+            }
+        }
+    }
+
+    /// Matches query prefix against tail and restores the rest.
+    ///
+    /// Returns true if the remaining query matches the tail prefix,
+    /// and appends the full tail string to the key buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `agent` - Agent containing the query and state
+    /// * `offset` - Offset into the tail buffer
+    pub fn prefix_match(&self, agent: &mut crate::agent::Agent, offset: usize) -> bool {
+        assert!(!self.buf.empty(), "Tail buffer is empty");
+
+        // Get query bytes to avoid borrow conflicts
+        let query_bytes = agent.query().as_bytes().to_vec();
+        let mut query_pos = agent
+            .state()
+            .expect("Agent must have state")
+            .query_pos();
+
+        if self.end_flags.empty() {
+            // Text mode
+            let start_offset = offset - query_pos;
+            loop {
+                if self.buf[start_offset + query_pos] != query_bytes[query_pos] {
+                    return false;
+                }
+                let state = agent.state_mut().expect("Agent must have state");
+                state.key_buf_mut().push(self.buf[start_offset + query_pos]);
+                query_pos += 1;
+                state.set_query_pos(query_pos);
+
+                if start_offset + query_pos >= self.buf.size()
+                    || self.buf[start_offset + query_pos] == 0
+                {
+                    return true;
+                }
+
+                if query_pos >= query_bytes.len() {
+                    break;
+                }
+            }
+
+            // Append rest of tail
+            let state = agent.state_mut().expect("Agent must have state");
+            let mut i = start_offset + query_pos;
+            while i < self.buf.size() && self.buf[i] != 0 {
+                state.key_buf_mut().push(self.buf[i]);
+                i += 1;
+            }
+            return true;
+        } else {
+            // Binary mode
+            let mut i = offset;
+            loop {
+                if self.buf[i] != query_bytes[query_pos] {
+                    return false;
+                }
+                let state = agent.state_mut().expect("Agent must have state");
+                state.key_buf_mut().push(self.buf[i]);
+                query_pos += 1;
+                state.set_query_pos(query_pos);
+
+                let is_end = self.end_flags.get(i);
+                i += 1;
+
+                if is_end {
+                    return true;
+                }
+
+                if query_pos >= query_bytes.len() {
+                    break;
+                }
+            }
+
+            // Append rest of tail
+            let state = agent.state_mut().expect("Agent must have state");
+            loop {
+                state.key_buf_mut().push(self.buf[i]);
+                if self.end_flags.get(i) {
+                    break;
+                }
+                i += 1;
+            }
+            return true;
+        }
+    }
+
     /// Clears the tail.
     pub fn clear(&mut self) {
         let mut temp = Tail::new();
