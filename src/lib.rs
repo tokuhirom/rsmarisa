@@ -34,6 +34,7 @@
 pub mod base;
 pub mod grimoire;
 pub mod key;
+pub mod keyset;
 pub mod query;
 
 // Re-export main types at the crate root
