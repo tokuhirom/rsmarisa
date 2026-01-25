@@ -38,7 +38,7 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 | C++ File | Rust Module | Status | Notes |
 |----------|-------------|--------|-------|
-| lib/marisa/grimoire/io/mapper.{h,cc} | src/grimoire/io/mapper.rs | 🚧 | Stub only |
+| lib/marisa/grimoire/io/mapper.{h,cc} | src/grimoire/io/mapper.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/io/reader.{h,cc} | src/grimoire/io/reader.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/io/writer.{h,cc} | src/grimoire/io/writer.rs | ✅ | Completed with tests |
 
@@ -108,14 +108,19 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 ## Progress Summary
 
 - **Total files to port**: ~50+
-- **Completed**: 17 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector, Header, Config, Range, Key, Cache, History, Entry, State, Sort, Reader, Writer, Tail)
+- **Completed**: 18 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector, Header, Config, Range, Key, Cache, History, Entry, State, Sort, Reader, Writer, Tail, Mapper)
 - **In progress**: ~18 (others structure only)
 - **Pending**: ~25+
-- **Tests passing**: 212 tests
+- **Tests passing**: 226 tests
 - **Lines of code**: ~7,200 lines
 
 ## Recent Achievements
 
+- ✅ Mapper: Memory-mapped data access for efficient deserialization
+- ✅ Tail: Suffix storage with TextTail and BinaryTail modes
+- ✅ Writer: Binary data serialization with dual backend support
+- ✅ Reader: Binary data deserialization
+- ✅ Sort: Depth-based string sorting algorithm
 - ✅ FlatVector: Space-efficient integer storage with automatic bit-packing
 - ✅ BitVector complete: basic operations, rank, and select
 - ✅ BitVector select operations (select0, select1) with O(log n) complexity
