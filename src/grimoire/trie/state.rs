@@ -169,6 +169,48 @@ impl State {
         &mut self.history
     }
 
+    /// Returns the size of the history stack.
+    #[inline]
+    pub fn history_size(&self) -> usize {
+        self.history.len()
+    }
+
+    /// Pushes a history entry onto the stack.
+    #[inline]
+    pub fn push_history(&mut self, history: History) {
+        self.history.push(history);
+    }
+
+    /// Returns a reference to the last history entry.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the history stack is empty.
+    #[inline]
+    pub fn history_back(&self) -> &History {
+        self.history.last().expect("History stack is empty")
+    }
+
+    /// Returns a reference to the history entry at the given index.
+    ///
+    /// # Panics
+    ///
+    /// Panics if index is out of bounds.
+    #[inline]
+    pub fn history_at(&self, index: usize) -> &History {
+        &self.history[index]
+    }
+
+    /// Returns a mutable reference to the history entry at the given index.
+    ///
+    /// # Panics
+    ///
+    /// Panics if index is out of bounds.
+    #[inline]
+    pub fn history_at_mut(&mut self, index: usize) -> &mut History {
+        &mut self.history[index]
+    }
+
     /// Resets the state to ready for any operation.
     pub fn reset(&mut self) {
         self.status_code = StatusCode::ReadyToAll;
