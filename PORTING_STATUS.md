@@ -94,16 +94,18 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 ## Tools (tools/)
 
-| C++ Tool | Rust Example | Status | Notes |
-|----------|--------------|--------|-------|
-| tools/marisa-benchmark.cc | - | ⏳ | Could be example or bench |
-| tools/marisa-build.cc | - | ⏳ | CLI tool |
-| tools/marisa-common-prefix-search.cc | - | ⏳ | CLI tool |
-| tools/marisa-dump.cc | - | ⏳ | CLI tool |
-| tools/marisa-lookup.cc | - | ⏳ | CLI tool |
-| tools/marisa-predictive-search.cc | - | ⏳ | CLI tool |
-| tools/marisa-reverse-lookup.cc | - | ⏳ | CLI tool |
-| tools/cmdopt.{h,cc} | - | ⏳ | Could use clap instead |
+**Note**: Rust CLI tools will use `rsmarisa-` prefix to avoid conflicts with C++ marisa-trie.
+
+| C++ Tool | Rust Binary | Status | Notes |
+|----------|-------------|--------|-------|
+| tools/marisa-benchmark.cc | rsmarisa-benchmark | ⏳ | Planned CLI tool |
+| tools/marisa-build.cc | rsmarisa-build | ⏳ | Planned CLI tool |
+| tools/marisa-common-prefix-search.cc | rsmarisa-common-prefix-search | ⏳ | Planned CLI tool |
+| tools/marisa-dump.cc | rsmarisa-dump | ⏳ | Planned CLI tool |
+| tools/marisa-lookup.cc | rsmarisa-lookup | ⏳ | Planned CLI tool |
+| tools/marisa-predictive-search.cc | rsmarisa-predictive-search | ⏳ | Planned CLI tool |
+| tools/marisa-reverse-lookup.cc | rsmarisa-reverse-lookup | ⏳ | Planned CLI tool |
+| tools/cmdopt.{h,cc} | - | ⏳ | Will use clap crate instead |
 
 ## Progress Summary
 

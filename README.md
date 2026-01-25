@@ -131,6 +131,17 @@ cargo test -- --nocapture
 cargo test test_trie_lookup
 ```
 
+## Coming Soon
+
+CLI tools with `rsmarisa-` prefix (to avoid conflicts with C++ marisa-trie):
+- `rsmarisa-build` - Build a dictionary from text input
+- `rsmarisa-lookup` - Look up keys in a dictionary
+- `rsmarisa-common-prefix-search` - Find common prefixes
+- `rsmarisa-predictive-search` - Find keys with a given prefix
+- `rsmarisa-reverse-lookup` - Restore keys from IDs
+- `rsmarisa-dump` - Dump dictionary contents
+- `rsmarisa-benchmark` - Performance benchmarking
+
 ## Performance
 
 MARISA tries are designed to be:
