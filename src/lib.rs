@@ -31,6 +31,7 @@
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
 
+pub mod agent;
 pub mod base;
 pub mod grimoire;
 pub mod key;
