@@ -60,7 +60,34 @@ For files that combine multiple C++ sources:
 // Rust implementation uses safe indexing with the same logic.
 ```
 
-### 4. Enable Tracking of Upstream Changes
+### 4. Binary File Format Compatibility
+
+**Critical Requirement**: Generated trie files must be binary-compatible with C++ marisa-trie.
+
+- **Same serialization format**: The Rust implementation must produce files that can be read by C++ marisa-trie, and vice versa
+
+- **Byte-level compatibility**: Ensure:
+  - Same byte ordering (endianness handling)
+  - Same padding and alignment
+  - Same bit-packing schemes
+  - Same integer sizes (use explicit types like `u32`, `u64` instead of `usize`)
+
+- **Verification approach**:
+  ```bash
+  # Build trie with Rust implementation
+  echo -e "app\napple\napricot" | cargo run --example marisa-build > rust.dic
+
+  # Verify with C++ implementation
+  echo "app" | marisa-lookup cpp.dic  # Should work
+  echo "app" | marisa-lookup rust.dic # Should also work
+  ```
+
+- **Test cross-compatibility**: Create tests that verify:
+  - Files created by C++ can be loaded by Rust
+  - Files created by Rust can be loaded by C++
+  - Both produce identical search results
+
+### 5. Enable Tracking of Upstream Changes
 
 - **Reference original commit hashes**: In CLAUDE.md or a PORTING.md file, record the marisa-trie commit that was used as the porting baseline
 
@@ -68,7 +95,7 @@ For files that combine multiple C++ sources:
 
 - **Keep parallel structure**: Avoid premature refactoring that would make it difficult to diff against the original
 
-### 5. Port Test Cases
+### 6. Port Test Cases and Distinguish Origins
 
 - **Port all test files**: Tests from `tests/` directory should be ported to Rust tests
   - `tests/base-test.cc` → `tests/base_test.rs` or module tests
@@ -80,7 +107,37 @@ For files that combine multiple C++ sources:
 
 - **Use Rust testing conventions**: Convert C++ test macros to Rust's `#[test]` and assertion macros
 
-### 6. Language and Documentation
+- **Clearly distinguish test origins**: Tests must be clearly marked to indicate whether they are:
+  1. **Ported from C++ original**: Tests directly ported from the C++ test suite
+  2. **Rust-specific additions**: New tests added in the Rust version
+
+**Marking Convention**:
+
+```rust
+// For tests ported from C++ marisa-trie:
+#[test]
+fn test_bit_vector_basic() {
+    // Ported from: tests/vector-test.cc::TestBitVector
+    let mut bv = BitVector::new();
+    // ...
+}
+
+// For Rust-specific tests:
+#[test]
+fn test_bit_vector_rust_specific() {
+    // Rust-specific: Test trait implementations
+    let bv = BitVector::default();
+    assert!(bv.is_empty());
+}
+```
+
+**Why this is important**:
+- Maintains traceability to original test coverage
+- Helps identify compatibility requirements vs. Rust enhancements
+- Enables verification against C++ behavior when debugging
+- Ensures binary file format compatibility is properly tested
+
+### 7. Language and Documentation
 
 - **All documentation in English**: Module docs, function docs, comments, README, etc.
 

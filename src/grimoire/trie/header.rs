@@ -70,12 +70,21 @@ impl Header {
     ///
     /// * `reader` - The reader to read from
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the header is invalid (TODO: should return Result)
-    pub fn read(&mut self, _reader: &mut Reader) {
-        // TODO: implement when Reader is complete
-        panic!("Header::read not yet implemented - Reader interface incomplete");
+    /// Returns an error if the header is invalid or reading fails
+    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+        let mut buf = [0u8; HEADER_SIZE];
+        reader.read_slice(&mut buf)?;
+
+        if !Self::test_header(&buf) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid MARISA header",
+            ));
+        }
+
+        Ok(())
     }
 
     /// Writes the header to a writer.
@@ -83,9 +92,12 @@ impl Header {
     /// # Arguments
     ///
     /// * `writer` - The writer to write to
-    pub fn write(&self, _writer: &mut Writer) {
-        // TODO: implement when Writer is complete
-        panic!("Header::write not yet implemented - Writer interface incomplete");
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing fails
+    pub fn write(&self, writer: &mut Writer) -> std::io::Result<()> {
+        writer.write_slice(Self::get_header())
     }
 
     /// Returns the I/O size of the header.

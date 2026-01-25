@@ -64,7 +64,34 @@ impl Reader {
         }
     }
 
-    /// Reads a single value of type T.
+    /// Reads and returns a single value of type T.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the reader is not open or if reading fails.
+    ///
+    /// # Safety
+    ///
+    /// This function reads raw bytes into the memory representation of T.
+    /// It's safe for types like u32, u64, but the caller must ensure T
+    /// is safe to initialize from arbitrary bytes (e.g., Copy types with
+    /// no invalid bit patterns).
+    pub fn read<T: Copy>(&mut self) -> io::Result<T> {
+        let reader = self
+            .reader
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Reader not open"))?;
+
+        let size = std::mem::size_of::<T>();
+        let mut value = unsafe { std::mem::zeroed::<T>() };
+        let slice =
+            unsafe { std::slice::from_raw_parts_mut(&mut value as *mut T as *mut u8, size) };
+
+        reader.read_exact(slice)?;
+        Ok(value)
+    }
+
+    /// Reads a single value of type T into a mutable reference.
     ///
     /// # Arguments
     ///
@@ -79,14 +106,14 @@ impl Reader {
     /// This function reads raw bytes into the memory representation of T.
     /// It's safe for types like u32, u64, but the caller must ensure T
     /// is safe to initialize from arbitrary bytes.
-    pub fn read<T>(&mut self, value: &mut T) -> io::Result<()> {
-        let reader = self.reader.as_mut().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::NotConnected, "Reader not open")
-        })?;
+    pub fn read_into<T>(&mut self, value: &mut T) -> io::Result<()> {
+        let reader = self
+            .reader
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Reader not open"))?;
 
         let size = std::mem::size_of::<T>();
-        let slice =
-            unsafe { std::slice::from_raw_parts_mut(value as *mut T as *mut u8, size) };
+        let slice = unsafe { std::slice::from_raw_parts_mut(value as *mut T as *mut u8, size) };
 
         reader.read_exact(slice)?;
         Ok(())
@@ -111,13 +138,13 @@ impl Reader {
             return Ok(());
         }
 
-        let reader = self.reader.as_mut().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::NotConnected, "Reader not open")
-        })?;
+        let reader = self
+            .reader
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Reader not open"))?;
 
         let size = std::mem::size_of::<T>() * values.len();
-        let slice =
-            unsafe { std::slice::from_raw_parts_mut(values.as_mut_ptr() as *mut u8, size) };
+        let slice = unsafe { std::slice::from_raw_parts_mut(values.as_mut_ptr() as *mut u8, size) };
 
         reader.read_exact(slice)?;
         Ok(())
@@ -141,9 +168,10 @@ impl Reader {
             return Ok(());
         }
 
-        let reader = self.reader.as_mut().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::NotConnected, "Reader not open")
-        })?;
+        let reader = self
+            .reader
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Reader not open"))?;
 
         if size <= 16 {
             let mut buf = [0u8; 16];
@@ -199,8 +227,7 @@ mod tests {
         let data = vec![0x01, 0x02, 0x03, 0x04];
         let mut reader = Reader::from_bytes(&data);
 
-        let mut value: u32 = 0;
-        reader.read(&mut value).unwrap();
+        let value: u32 = reader.read().unwrap();
 
         // Little-endian: 0x04030201
         assert_eq!(value, 0x04030201);
@@ -238,8 +265,7 @@ mod tests {
         // Skip 4 bytes
         reader.seek(4).unwrap();
 
-        let mut value: u8 = 0;
-        reader.read(&mut value).unwrap();
+        let value: u8 = reader.read().unwrap();
         assert_eq!(value, 5);
     }
 
@@ -250,8 +276,7 @@ mod tests {
 
         reader.seek(0).unwrap();
 
-        let mut value: u8 = 0;
-        reader.read(&mut value).unwrap();
+        let value: u8 = reader.read().unwrap();
         assert_eq!(value, 1);
     }
 
@@ -263,8 +288,7 @@ mod tests {
         // Seek past 1024 bytes (tests large buffer path)
         reader.seek(1500).unwrap();
 
-        let mut value: u8 = 0;
-        reader.read(&mut value).unwrap();
+        let value: u8 = reader.read().unwrap();
         assert_eq!(value, 0);
     }
 
@@ -281,9 +305,8 @@ mod tests {
     #[test]
     fn test_reader_not_open() {
         let mut reader = Reader::new();
-        let mut value: u32 = 0;
 
-        let result = reader.read(&mut value);
+        let result = reader.read::<u32>();
         assert!(result.is_err());
     }
 
@@ -295,8 +318,7 @@ mod tests {
 
         assert!(reader.is_open());
 
-        let mut value: u32 = 0;
-        reader.read(&mut value).unwrap();
+        let value: u32 = reader.read().unwrap();
         assert_eq!(value, 0x04030201);
     }
 
@@ -308,12 +330,10 @@ mod tests {
 
         let mut reader = Reader::from_bytes(&data);
 
-        let mut val_u32: u32 = 0;
-        reader.read(&mut val_u32).unwrap();
+        let val_u32: u32 = reader.read().unwrap();
         assert_eq!(val_u32, 42);
 
-        let mut val_u64: u64 = 0;
-        reader.read(&mut val_u64).unwrap();
+        let val_u64: u64 = reader.read().unwrap();
         assert_eq!(val_u64, 100);
     }
 
@@ -322,8 +342,7 @@ mod tests {
         let data = vec![1u8, 2];
         let mut reader = Reader::from_bytes(&data);
 
-        let mut value: u32 = 0;
-        let result = reader.read(&mut value);
+        let result = reader.read::<u32>();
         assert!(result.is_err());
     }
 

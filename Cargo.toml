@@ -13,6 +13,7 @@ rust-version = "1.70"
 [dependencies]
 
 [dev-dependencies]
+tempfile = "3.0"
 
 [lib]
 name = "marisa"
@@ -22,3 +23,12 @@ path = "src/lib.rs"
 name = "basic_usage"
 path = "examples/basic_usage.rs"
 required-features = []
+
+[[example]]
+name = "save_load"
+path = "examples/save_load.rs"
+required-features = []
+
+[[bin]]
+name = "binary_compatibility_test"
+path = "bin/binary_compatibility_test.rs"

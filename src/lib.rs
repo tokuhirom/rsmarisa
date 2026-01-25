@@ -37,6 +37,12 @@ pub mod grimoire;
 pub mod key;
 pub mod keyset;
 pub mod query;
+pub mod trie;
 
 // Re-export main types at the crate root
 // These correspond to the public API in include/marisa/*.h
+pub use agent::Agent;
+pub use key::Key;
+pub use keyset::Keyset;
+pub use query::Query;
+pub use trie::Trie;

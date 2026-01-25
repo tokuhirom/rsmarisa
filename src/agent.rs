@@ -140,6 +140,29 @@ impl Agent {
         self.key.set_id(id);
     }
 
+    /// Sets the key to point to the query buffer.
+    ///
+    /// This is used after a successful lookup to set the result key
+    /// to the query string that was searched for.
+    pub fn set_key_from_query(&mut self) {
+        let bytes = self.query.as_bytes();
+        self.key.set_bytes(bytes);
+    }
+
+    /// Sets the key to point to a prefix of the query buffer.
+    ///
+    /// This is used during prefix searches to set the result key
+    /// to a prefix of the query string.
+    ///
+    /// # Arguments
+    ///
+    /// * `length` - Length of the prefix
+    pub fn set_key_from_query_prefix(&mut self, length: usize) {
+        let bytes = self.query.as_bytes();
+        assert!(length <= bytes.len(), "Prefix length out of bounds");
+        self.key.set_bytes(&bytes[..length]);
+    }
+
     /// Returns true if the agent has state.
     pub fn has_state(&self) -> bool {
         self.state.is_some()

@@ -139,6 +139,73 @@ impl FlatVector {
         std::mem::swap(&mut self.size, &mut other.size);
     }
 
+    /// Reads the flat vector from a reader.
+    ///
+    /// Format (matching C++ marisa-trie):
+    /// - units: Vector<u64>
+    /// - value_size: u32 (must be <= 32)
+    /// - mask: u32
+    /// - size: u64
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - Reader to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading fails or if value_size > 32.
+    pub fn read(&mut self, reader: &mut crate::grimoire::io::Reader) -> std::io::Result<()> {
+        // Read units
+        self.units.read(reader)?;
+
+        // Read value_size and validate
+        let temp_value_size: u32 = reader.read()?;
+        if temp_value_size > 32 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "value_size exceeds 32",
+            ));
+        }
+        self.value_size = temp_value_size as usize;
+
+        // Read mask
+        let temp_mask: u32 = reader.read()?;
+        self.mask = temp_mask;
+
+        // Read size
+        let temp_size: u64 = reader.read()?;
+        self.size = temp_size as usize;
+
+        Ok(())
+    }
+
+    /// Writes the flat vector to a writer.
+    ///
+    /// Format (matching C++ marisa-trie):
+    /// - units: Vector<u64>
+    /// - value_size: u32
+    /// - mask: u32
+    /// - size: u64
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Writer to write to
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing fails.
+    pub fn write(&self, writer: &mut crate::grimoire::io::Writer) -> std::io::Result<()> {
+        // Write units
+        self.units.write(writer)?;
+
+        // Write value_size, mask, size
+        writer.write(&(self.value_size as u32))?;
+        writer.write(&self.mask)?;
+        writer.write(&(self.size as u64))?;
+
+        Ok(())
+    }
+
     /// Internal build implementation.
     fn build_internal(&mut self, values: &Vector<u32>) {
         // Find maximum value to determine bit-width needed
@@ -165,7 +232,8 @@ impl FlatVector {
             64 / WORD_SIZE
         } else {
             let bits_needed = value_size as u64 * values.size() as u64;
-            let mut num_units = ((bits_needed + (WORD_SIZE as u64 - 1)) / WORD_SIZE as u64) as usize;
+            let mut num_units =
+                ((bits_needed + (WORD_SIZE as u64 - 1)) / WORD_SIZE as u64) as usize;
             // Round up to 64-bit alignment
             let alignment = 64 / WORD_SIZE;
             num_units += num_units % alignment;
@@ -401,5 +469,88 @@ mod tests {
 
         assert_eq!(fv.size(), 0);
         assert!(fv.empty());
+    }
+
+    #[test]
+    fn test_flat_vector_write_read() {
+        // Rust-specific: Test FlatVector serialization
+        use crate::grimoire::io::{Reader, Writer};
+
+        let mut values = Vector::new();
+        for i in 0..100u32 {
+            values.push_back((i * 7) % 256); // Values 0-255 need 8 bits
+        }
+
+        let mut fv = FlatVector::new();
+        fv.build(&values);
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        fv.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut fv2 = FlatVector::new();
+        fv2.read(&mut reader).unwrap();
+
+        // Verify
+        assert_eq!(fv2.size(), 100);
+        for i in 0..100usize {
+            assert_eq!(fv2.get(i), ((i as u32 * 7) % 256));
+        }
+    }
+
+    #[test]
+    fn test_flat_vector_write_read_empty() {
+        // Rust-specific: Test empty FlatVector serialization
+        use crate::grimoire::io::{Reader, Writer};
+
+        let fv = FlatVector::new();
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        fv.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut fv2 = FlatVector::new();
+        fv2.read(&mut reader).unwrap();
+
+        assert_eq!(fv2.size(), 0);
+        assert!(fv2.empty());
+    }
+
+    #[test]
+    fn test_flat_vector_read_invalid_value_size() {
+        // Rust-specific: Test validation of value_size <= 32
+        use crate::grimoire::io::{Reader, Writer};
+
+        // Create invalid data where value_size > 32
+        let mut writer = Writer::from_vec(Vec::new());
+
+        // Write empty units vector
+        let empty_vec: crate::grimoire::vector::vector::Vector<u64> =
+            crate::grimoire::vector::vector::Vector::new();
+        empty_vec.write(&mut writer).unwrap();
+
+        // Write value_size = 40 (invalid!), mask = 0, size = 0
+        writer.write(&40u32).unwrap();
+        writer.write(&0u32).unwrap();
+        writer.write(&0u64).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Try to read - should fail
+        let mut reader = Reader::from_bytes(&data);
+        let mut fv = FlatVector::new();
+        let result = fv.read(&mut reader);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
     }
 }

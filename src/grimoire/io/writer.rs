@@ -200,10 +200,7 @@ impl Writer {
     /// Returns an error if the writer doesn't have a buffer.
     pub fn into_inner(self) -> io::Result<Vec<u8>> {
         self.buffer.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Writer does not have a buffer",
-            )
+            io::Error::new(io::ErrorKind::InvalidInput, "Writer does not have a buffer")
         })
     }
 }

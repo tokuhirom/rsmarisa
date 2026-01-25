@@ -15,10 +15,10 @@ use super::vector::Vector;
 use crate::base::{ErrorCode, WORD_SIZE};
 use crate::grimoire::io::{Mapper, Reader, Writer};
 
-#[cfg(target_pointer_width = "64")]
-use super::select_bit::select_bit_u64;
 #[cfg(target_pointer_width = "32")]
 use super::select_bit::select_bit_u32;
+#[cfg(target_pointer_width = "64")]
+use super::select_bit::select_bit_u64;
 
 /// Bit vector supporting rank and select operations.
 ///
@@ -165,6 +165,82 @@ impl BitVector {
         self.ranks.swap(&mut other.ranks);
         self.select0s.swap(&mut other.select0s);
         self.select1s.swap(&mut other.select1s);
+    }
+
+    /// Reads the bit vector from a reader.
+    ///
+    /// Format (matching C++ marisa-trie):
+    /// - units: Vector<u64>
+    /// - size: u32
+    /// - num_1s: u32
+    /// - ranks: Vector<RankIndex>
+    /// - select0s: Vector<u32>
+    /// - select1s: Vector<u32>
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - Reader to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading fails or if num_1s > size.
+    pub fn read(&mut self, reader: &mut crate::grimoire::io::Reader) -> std::io::Result<()> {
+        // Read units
+        self.units.read(reader)?;
+
+        // Read size
+        let temp_size: u32 = reader.read()?;
+        self.size = temp_size as usize;
+
+        // Read num_1s and validate
+        let temp_num_1s: u32 = reader.read()?;
+        if temp_num_1s as usize > self.size {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "num_1s exceeds size",
+            ));
+        }
+        self.num_1s = temp_num_1s as usize;
+
+        // Read rank and select indices
+        self.ranks.read(reader)?;
+        self.select0s.read(reader)?;
+        self.select1s.read(reader)?;
+
+        Ok(())
+    }
+
+    /// Writes the bit vector to a writer.
+    ///
+    /// Format (matching C++ marisa-trie):
+    /// - units: Vector<u64>
+    /// - size: u32
+    /// - num_1s: u32
+    /// - ranks: Vector<RankIndex>
+    /// - select0s: Vector<u32>
+    /// - select1s: Vector<u32>
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Writer to write to
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing fails.
+    pub fn write(&self, writer: &mut crate::grimoire::io::Writer) -> std::io::Result<()> {
+        // Write units
+        self.units.write(writer)?;
+
+        // Write size and num_1s as u32
+        writer.write(&(self.size as u32))?;
+        writer.write(&(self.num_1s as u32))?;
+
+        // Write rank and select indices
+        self.ranks.write(writer)?;
+        self.select0s.write(writer)?;
+        self.select1s.write(writer)?;
+
+        Ok(())
     }
 
     /// Disables the select0 index.
@@ -764,16 +840,16 @@ mod tests {
         let mut bv = BitVector::new();
 
         // Create pattern: 1001 0010 0100 1000 (bits at positions 0, 3, 6, 11, 15)
-        bv.push_back(true);  // 0
+        bv.push_back(true); // 0
         bv.push_back(false); // 1
         bv.push_back(false); // 2
-        bv.push_back(true);  // 3
+        bv.push_back(true); // 3
         bv.push_back(false); // 4
         bv.push_back(false); // 5
-        bv.push_back(true);  // 6
+        bv.push_back(true); // 6
         bv.push_back(false); // 7
         bv.push_back(false); // 8
-        bv.push_back(true);  // 9
+        bv.push_back(true); // 9
         bv.push_back(false); // 10
         bv.push_back(false); // 11
 
@@ -792,16 +868,16 @@ mod tests {
         let mut bv = BitVector::new();
 
         // Create pattern: 1001 0010 0100 (0-bits at positions 1, 2, 4, 5, 7, 8, 10, 11)
-        bv.push_back(true);  // 0
+        bv.push_back(true); // 0
         bv.push_back(false); // 1
         bv.push_back(false); // 2
-        bv.push_back(true);  // 3
+        bv.push_back(true); // 3
         bv.push_back(false); // 4
         bv.push_back(false); // 5
-        bv.push_back(true);  // 6
+        bv.push_back(true); // 6
         bv.push_back(false); // 7
         bv.push_back(false); // 8
-        bv.push_back(true);  // 9
+        bv.push_back(true); // 9
         bv.push_back(false); // 10
         bv.push_back(false); // 11
 
@@ -909,5 +985,102 @@ mod tests {
         bv.push_back(false);
         bv.build(false, false); // Don't build select0 index
         bv.select0(0); // Should panic
+    }
+
+    #[test]
+    fn test_bit_vector_write_read() {
+        // Rust-specific: Test BitVector serialization
+        use crate::grimoire::io::{Reader, Writer};
+
+        let mut bv = BitVector::new();
+        for i in 0..100 {
+            bv.push_back(i % 3 == 0);
+        }
+        bv.build(true, true);
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        bv.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut bv2 = BitVector::new();
+        bv2.read(&mut reader).unwrap();
+
+        // Verify
+        assert_eq!(bv2.size(), 100);
+        assert_eq!(bv2.num_1s(), 34); // 100/3 rounded up
+        for i in 0..100 {
+            assert_eq!(bv2.get(i), i % 3 == 0);
+        }
+
+        // Verify rank operations work
+        for i in 0..=100 {
+            assert_eq!(bv2.rank1(i), bv.rank1(i));
+        }
+    }
+
+    #[test]
+    fn test_bit_vector_write_read_empty() {
+        // Rust-specific: Test empty BitVector serialization
+        use crate::grimoire::io::{Reader, Writer};
+
+        let bv = BitVector::new();
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        bv.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut bv2 = BitVector::new();
+        bv2.read(&mut reader).unwrap();
+
+        assert_eq!(bv2.size(), 0);
+        assert_eq!(bv2.num_1s(), 0);
+        assert!(bv2.empty());
+    }
+
+    #[test]
+    fn test_bit_vector_read_invalid_num_1s() {
+        // Rust-specific: Test validation of num_1s <= size
+        use crate::grimoire::io::{Reader, Writer};
+
+        // Create invalid data where num_1s > size
+        let mut writer = Writer::from_vec(Vec::new());
+
+        // Write empty units vector
+        let empty_vec: crate::grimoire::vector::vector::Vector<u64> =
+            crate::grimoire::vector::vector::Vector::new();
+        empty_vec.write(&mut writer).unwrap();
+
+        // Write size = 10, num_1s = 20 (invalid!)
+        writer.write(&10u32).unwrap();
+        writer.write(&20u32).unwrap();
+
+        // Write empty rank/select vectors
+        let empty_ranks: crate::grimoire::vector::vector::Vector<super::RankIndex> =
+            crate::grimoire::vector::vector::Vector::new();
+        empty_ranks.write(&mut writer).unwrap();
+
+        let empty_u32: crate::grimoire::vector::vector::Vector<u32> =
+            crate::grimoire::vector::vector::Vector::new();
+        empty_u32.write(&mut writer).unwrap();
+        empty_u32.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Try to read - should fail
+        let mut reader = Reader::from_bytes(&data);
+        let mut bv = BitVector::new();
+        let result = bv.read(&mut reader);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
     }
 }

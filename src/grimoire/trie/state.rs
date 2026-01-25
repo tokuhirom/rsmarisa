@@ -368,10 +368,7 @@ mod tests {
 
         assert_eq!(state.node_id(), 0);
         assert_eq!(state.query_pos(), 0);
-        assert_eq!(
-            state.status_code(),
-            StatusCode::ReadyToCommonPrefixSearch
-        );
+        assert_eq!(state.status_code(), StatusCode::ReadyToCommonPrefixSearch);
     }
 
     #[test]
@@ -409,7 +406,10 @@ mod tests {
     #[test]
     fn test_status_code_equality() {
         assert_eq!(StatusCode::ReadyToAll, StatusCode::ReadyToAll);
-        assert_ne!(StatusCode::ReadyToAll, StatusCode::ReadyToCommonPrefixSearch);
+        assert_ne!(
+            StatusCode::ReadyToAll,
+            StatusCode::ReadyToCommonPrefixSearch
+        );
     }
 
     #[test]

@@ -117,10 +117,7 @@ impl Keyset {
     /// Adds bytes to the keyset with specified weight.
     pub fn push_back_bytes(&mut self, bytes: &[u8], weight: f32) -> io::Result<()> {
         if bytes.len() > u32::MAX as usize {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Key too long",
-            ));
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "Key too long"));
         }
 
         let key_ptr = self.reserve(bytes.len());
@@ -227,7 +224,11 @@ impl Keyset {
 
         // Get pointer to available space
         let block_idx = self.base_blocks.len() - 1;
-        let ptr = unsafe { self.base_blocks[block_idx].as_mut_ptr().add(self.ptr_offset) };
+        let ptr = unsafe {
+            self.base_blocks[block_idx]
+                .as_mut_ptr()
+                .add(self.ptr_offset)
+        };
 
         self.ptr_offset += size;
         self.avail -= size;

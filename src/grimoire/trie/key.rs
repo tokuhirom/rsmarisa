@@ -26,7 +26,7 @@ impl Default for WeightOrTerminal {
 /// Key holds a borrowed slice of bytes representing a string, along with
 /// optional metadata like weight (for frequency-based sorting) or terminal
 /// position (for trie node identification).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Key<'a> {
     /// Byte slice representing the key string.
     bytes: &'a [u8],
@@ -192,11 +192,25 @@ impl<'a> Ord for Key<'a> {
     }
 }
 
+impl<'a> crate::grimoire::algorithm::sort::Sortable for Key<'a> {
+    fn get(&self, index: usize) -> Option<u8> {
+        if index < self.bytes.len() {
+            Some(self.bytes[index])
+        } else {
+            None
+        }
+    }
+
+    fn length(&self) -> usize {
+        self.bytes.len()
+    }
+}
+
 /// Reverse key representing a string accessed in reverse order.
 ///
 /// ReverseKey is similar to Key but accesses the string bytes in reverse
 /// order. This is useful for certain trie construction algorithms.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ReverseKey<'a> {
     /// Full byte slice (stored normally).
     bytes: &'a [u8],
@@ -384,6 +398,20 @@ impl<'a> Ord for ReverseKey<'a> {
             }
         }
         self.length.cmp(&other.length)
+    }
+}
+
+impl<'a> crate::grimoire::algorithm::sort::Sortable for ReverseKey<'a> {
+    fn get(&self, index: usize) -> Option<u8> {
+        if index < self.length {
+            Some(ReverseKey::get(self, index))
+        } else {
+            None
+        }
+    }
+
+    fn length(&self) -> usize {
+        self.length
     }
 }
 

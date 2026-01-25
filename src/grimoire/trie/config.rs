@@ -232,7 +232,10 @@ mod tests {
     #[test]
     fn test_config_parse_combined() {
         let mut config = Config::new();
-        let flags = 5 | (CacheLevel::Large as i32) | (TailMode::BinaryTail as i32) | (NodeOrder::Weight as i32);
+        let flags = 5
+            | (CacheLevel::Large as i32)
+            | (TailMode::BinaryTail as i32)
+            | (NodeOrder::Weight as i32);
         config.parse(flags);
 
         assert_eq!(config.num_tries(), 5);

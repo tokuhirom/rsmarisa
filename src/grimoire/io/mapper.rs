@@ -62,9 +62,9 @@ impl<'a> Mapper<'a> {
     /// This function reads raw bytes into the memory representation of T.
     /// The caller must ensure T is safe to initialize from arbitrary bytes.
     pub fn map<T: Copy>(&mut self, value: &mut T) -> io::Result<()> {
-        let data = self.data.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::NotConnected, "Mapper not open")
-        })?;
+        let data = self
+            .data
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Mapper not open"))?;
 
         let size = std::mem::size_of::<T>();
         if self.position + size > data.len() {
@@ -76,11 +76,7 @@ impl<'a> Mapper<'a> {
 
         let slice = &data[self.position..self.position + size];
         unsafe {
-            std::ptr::copy_nonoverlapping(
-                slice.as_ptr(),
-                value as *mut T as *mut u8,
-                size,
-            );
+            std::ptr::copy_nonoverlapping(slice.as_ptr(), value as *mut T as *mut u8, size);
         }
 
         self.position += size;
@@ -106,9 +102,9 @@ impl<'a> Mapper<'a> {
             return Ok(());
         }
 
-        let data = self.data.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::NotConnected, "Mapper not open")
-        })?;
+        let data = self
+            .data
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Mapper not open"))?;
 
         let size = std::mem::size_of::<T>() * values.len();
         if self.position + size > data.len() {
@@ -120,11 +116,7 @@ impl<'a> Mapper<'a> {
 
         let slice = &data[self.position..self.position + size];
         unsafe {
-            std::ptr::copy_nonoverlapping(
-                slice.as_ptr(),
-                values.as_mut_ptr() as *mut u8,
-                size,
-            );
+            std::ptr::copy_nonoverlapping(slice.as_ptr(), values.as_mut_ptr() as *mut u8, size);
         }
 
         self.position += size;
@@ -141,9 +133,9 @@ impl<'a> Mapper<'a> {
     ///
     /// Returns an error if the mapper is not open or if seeking past the end.
     pub fn seek(&mut self, size: usize) -> io::Result<()> {
-        let data = self.data.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::NotConnected, "Mapper not open")
-        })?;
+        let data = self
+            .data
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Mapper not open"))?;
 
         if self.position + size > data.len() {
             return Err(io::Error::new(

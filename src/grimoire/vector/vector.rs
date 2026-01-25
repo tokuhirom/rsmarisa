@@ -152,6 +152,23 @@ impl<T: Copy> Vector<T> {
         self.data.last_mut()
     }
 
+    /// Returns the vector as an immutable slice.
+    #[inline]
+    pub fn as_slice(&self) -> &[T] {
+        &self.data
+    }
+
+    /// Returns the vector as a mutable slice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the vector is fixed.
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        assert!(!self.fixed, "Cannot modify fixed vector");
+        &mut self.data
+    }
+
     /// Clears the vector.
     #[inline]
     pub fn clear(&mut self) {
@@ -170,14 +187,78 @@ impl<T: Copy> Vector<T> {
         // TODO: implement memory mapping
     }
 
-    /// Reads the vector from a reader (stub for now).
-    pub fn read(&mut self, _reader: &mut Reader) {
-        // TODO: implement reading
+    /// Reads the vector from a reader.
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - Reader to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading fails.
+    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+        // Read the total size (u64)
+        let total_size: u64 = reader.read()?;
+
+        // Calculate number of elements
+        let elem_size = std::mem::size_of::<T>();
+        if elem_size == 0 {
+            return Ok(()); // Zero-sized types
+        }
+
+        let size = (total_size as usize) / elem_size;
+
+        // Allocate and read elements
+        self.data.clear();
+        self.data.reserve(size);
+        unsafe {
+            self.data.set_len(size);
+        }
+
+        if size > 0 {
+            reader.read_slice(&mut self.data[..])?;
+        }
+
+        // Skip alignment padding
+        let padding = ((8 - (total_size % 8)) % 8) as usize;
+        if padding > 0 {
+            reader.seek(padding)?;
+        }
+
+        Ok(())
     }
 
-    /// Writes the vector to a writer (stub for now).
-    pub fn write(&self, _writer: &mut Writer) {
-        // TODO: implement writing
+    /// Writes the vector to a writer.
+    ///
+    /// Format:
+    /// - u64: total_size (size in bytes)
+    /// - [T; size]: array elements
+    /// - padding: 8-byte alignment padding
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Writer to write to
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing fails.
+    pub fn write(&self, writer: &mut Writer) -> std::io::Result<()> {
+        // Write total size as u64
+        let total = self.total_size() as u64;
+        writer.write(&total)?;
+
+        // Write array elements
+        if !self.data.is_empty() {
+            writer.write_slice(&self.data[..])?;
+        }
+
+        // Write alignment padding to 8 bytes
+        let padding = ((8 - (total % 8)) % 8) as usize;
+        if padding > 0 {
+            writer.seek(padding)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -257,5 +338,91 @@ mod tests {
         let mut vec = Vector::new();
         vec.fix();
         vec.push_back(1);
+    }
+
+    #[test]
+    fn test_vector_write_read() {
+        // Rust-specific: Test Vector<T> serialization
+        use crate::grimoire::io::{Reader, Writer};
+
+        let mut vec = Vector::new();
+        vec.push_back(1u32);
+        vec.push_back(2u32);
+        vec.push_back(3u32);
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        vec.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut vec2: Vector<u32> = Vector::new();
+        vec2.read(&mut reader).unwrap();
+
+        assert_eq!(vec2.size(), 3);
+        assert_eq!(vec2[0], 1);
+        assert_eq!(vec2[1], 2);
+        assert_eq!(vec2[2], 3);
+    }
+
+    #[test]
+    fn test_vector_write_read_empty() {
+        // Rust-specific: Test empty Vector<T> serialization
+        use crate::grimoire::io::{Reader, Writer};
+
+        let vec: Vector<u64> = Vector::new();
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        vec.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut vec2: Vector<u64> = Vector::new();
+        vec2.read(&mut reader).unwrap();
+
+        assert_eq!(vec2.size(), 0);
+        assert!(vec2.empty());
+    }
+
+    #[test]
+    fn test_vector_write_alignment() {
+        // Rust-specific: Test 8-byte alignment padding
+        use crate::grimoire::io::Writer;
+
+        let mut vec = Vector::new();
+        vec.push_back(1u8);
+        vec.push_back(2u8);
+        vec.push_back(3u8);
+
+        let mut writer = Writer::from_vec(Vec::new());
+        vec.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Format: 8 bytes (u64 total_size) + 3 bytes (data) + 5 bytes (padding) = 16 bytes
+        assert_eq!(data.len(), 16);
+
+        // Check total_size field (first 8 bytes = u64)
+        let total_size = u64::from_le_bytes([
+            data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+        ]);
+        assert_eq!(total_size, 3); // 3 bytes total
+
+        // Check data
+        assert_eq!(data[8], 1);
+        assert_eq!(data[9], 2);
+        assert_eq!(data[10], 3);
+
+        // Check padding (should be zeros)
+        assert_eq!(data[11], 0);
+        assert_eq!(data[12], 0);
+        assert_eq!(data[13], 0);
+        assert_eq!(data[14], 0);
+        assert_eq!(data[15], 0);
     }
 }

@@ -91,7 +91,134 @@ impl Tail {
         self.buf.io_size() + self.end_flags.io_size()
     }
 
+    /// Builds tail storage from entries.
+    ///
+    /// # Arguments
+    ///
+    /// * `entries` - Vector of entries to build from
+    /// * `offsets` - Output vector for tail offsets
+    /// * `mode` - Tail mode (text or binary)
+    pub fn build(
+        &mut self,
+        entries: &mut Vector<crate::grimoire::trie::entry::Entry>,
+        offsets: &mut Vector<u32>,
+        mut mode: TailMode,
+    ) {
+        // Check if any entry contains NULL bytes - if so, use binary mode
+        if mode == TailMode::TextTail {
+            for i in 0..entries.size() {
+                let bytes = entries[i].as_bytes();
+                for &b in bytes {
+                    if b == 0 {
+                        mode = TailMode::BinaryTail;
+                        break;
+                    }
+                }
+                if mode == TailMode::BinaryTail {
+                    break;
+                }
+            }
+        }
+
+        let mut temp = Tail::new();
+        temp.build_(entries, offsets, mode);
+        self.swap(&mut temp);
+    }
+
+    /// Internal build implementation.
+    fn build_(
+        &mut self,
+        entries: &mut Vector<crate::grimoire::trie::entry::Entry>,
+        offsets: &mut Vector<u32>,
+        mode: TailMode,
+    ) {
+        use crate::grimoire::trie::entry::{Entry, StringComparer};
+
+        // Set IDs for all entries
+        for i in 0..entries.size() {
+            entries[i].set_id(i);
+        }
+
+        // Sort entries by string content (in reverse)
+        let entries_slice = entries.as_mut_slice();
+        entries_slice.sort_by(|a, b| {
+            if StringComparer::compare(a, b) {
+                std::cmp::Ordering::Greater
+            } else if StringComparer::compare(b, a) {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        });
+
+        let mut temp_offsets: Vector<u32> = Vector::new();
+        temp_offsets.resize(entries.size(), 0);
+
+        // Process entries in reverse order to find common suffixes
+        let dummy = Entry::new();
+        let mut last = dummy;
+
+        for i in (0..entries.size()).rev() {
+            let current = entries[i];
+
+            assert!(current.length() > 0, "Entry length must be > 0");
+
+            // Find longest common prefix (remember entries are accessed in reverse)
+            let mut match_len = 0;
+            while match_len < current.length()
+                && match_len < last.length()
+                && current.get(match_len) == last.get(match_len)
+            {
+                match_len += 1;
+            }
+
+            if match_len == current.length() && last.length() != 0 {
+                // Current is a suffix of last - reuse the tail
+                temp_offsets[current.id()] =
+                    temp_offsets[last.id()] + (last.length() - match_len) as u32;
+            } else {
+                // Add new entry to tail buffer
+                temp_offsets[current.id()] = self.buf.size() as u32;
+
+                // Add bytes in reverse order
+                for j in (0..current.length()).rev() {
+                    self.buf.push_back(current.get(j));
+                }
+
+                // Add terminator
+                if mode == TailMode::TextTail {
+                    self.buf.push_back(0); // NULL terminator
+                } else {
+                    // Binary mode: add end flags
+                    for _ in 0..(current.length() - 1) {
+                        self.end_flags.push_back(false);
+                    }
+                    self.end_flags.push_back(true);
+                }
+
+                assert!(
+                    self.buf.size() <= u32::MAX as usize,
+                    "Tail buffer too large"
+                );
+            }
+
+            last = current;
+        }
+
+        // Build end_flags if in binary mode
+        if mode == TailMode::BinaryTail {
+            self.end_flags.build(false, false);
+        }
+
+        self.buf.shrink();
+        offsets.swap(&mut temp_offsets);
+    }
+
     /// Reads tail from a reader.
+    ///
+    /// Format:
+    /// - buf: Vector<u8> (suffix buffer)
+    /// - end_flags: BitVector (end markers for binary mode)
     ///
     /// # Arguments
     ///
@@ -100,13 +227,17 @@ impl Tail {
     /// # Errors
     ///
     /// Returns an error if reading fails.
-    #[allow(dead_code)]
-    pub fn read(&mut self, _reader: &mut Reader) -> io::Result<()> {
-        // TODO: implement proper I/O
+    pub fn read(&mut self, reader: &mut Reader) -> io::Result<()> {
+        self.buf.read(reader)?;
+        self.end_flags.read(reader)?;
         Ok(())
     }
 
     /// Writes tail to a writer.
+    ///
+    /// Format:
+    /// - buf: Vector<u8> (suffix buffer)
+    /// - end_flags: BitVector (end markers for binary mode)
     ///
     /// # Arguments
     ///
@@ -115,9 +246,9 @@ impl Tail {
     /// # Errors
     ///
     /// Returns an error if writing fails.
-    #[allow(dead_code)]
-    pub fn write(&self, _writer: &mut Writer) -> io::Result<()> {
-        // TODO: implement proper I/O
+    pub fn write(&self, writer: &mut Writer) -> io::Result<()> {
+        self.buf.write(writer)?;
+        self.end_flags.write(writer)?;
         Ok(())
     }
 
@@ -130,7 +261,10 @@ impl Tail {
     /// * `agent` - Agent containing the state with key buffer
     /// * `offset` - Offset into the tail buffer
     pub fn restore(&self, agent: &mut crate::agent::Agent, offset: usize) {
-        assert!(!self.buf.empty(), "Tail buffer is empty");
+        // If tail buffer is empty (not built yet), there's nothing to restore
+        if self.buf.empty() {
+            return;
+        }
 
         let state = agent.state_mut().expect("Agent must have state");
 
@@ -163,16 +297,19 @@ impl Tail {
     /// * `agent` - Agent containing the query and state
     /// * `offset` - Offset into the tail buffer
     pub fn match_tail(&self, agent: &mut crate::agent::Agent, offset: usize) -> bool {
-        assert!(!self.buf.empty(), "Tail buffer is empty");
+        // If tail buffer is empty (not built yet), cannot match
+        if self.buf.empty() {
+            return false;
+        }
 
         // Get query bytes to avoid borrow conflicts
         let query_bytes = agent.query().as_bytes().to_vec();
-        let mut query_pos = agent
-            .state()
-            .expect("Agent must have state")
-            .query_pos();
+        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
 
-        assert!(query_pos < query_bytes.len(), "Query position out of bounds");
+        assert!(
+            query_pos < query_bytes.len(),
+            "Query position out of bounds"
+        );
 
         if self.end_flags.empty() {
             // Text mode
@@ -182,7 +319,10 @@ impl Tail {
                     return false;
                 }
                 query_pos += 1;
-                agent.state_mut().expect("Agent must have state").set_query_pos(query_pos);
+                agent
+                    .state_mut()
+                    .expect("Agent must have state")
+                    .set_query_pos(query_pos);
 
                 if start_offset + query_pos >= self.buf.size()
                     || self.buf[start_offset + query_pos] == 0
@@ -202,7 +342,10 @@ impl Tail {
                     return false;
                 }
                 query_pos += 1;
-                agent.state_mut().expect("Agent must have state").set_query_pos(query_pos);
+                agent
+                    .state_mut()
+                    .expect("Agent must have state")
+                    .set_query_pos(query_pos);
 
                 let is_end = self.end_flags.get(i);
                 i += 1;
@@ -228,14 +371,14 @@ impl Tail {
     /// * `agent` - Agent containing the query and state
     /// * `offset` - Offset into the tail buffer
     pub fn prefix_match(&self, agent: &mut crate::agent::Agent, offset: usize) -> bool {
-        assert!(!self.buf.empty(), "Tail buffer is empty");
+        // If tail buffer is empty (not built yet), cannot match
+        if self.buf.empty() {
+            return false;
+        }
 
         // Get query bytes to avoid borrow conflicts
         let query_bytes = agent.query().as_bytes().to_vec();
-        let mut query_pos = agent
-            .state()
-            .expect("Agent must have state")
-            .query_pos();
+        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
 
         if self.end_flags.empty() {
             // Text mode
@@ -410,5 +553,114 @@ mod tests {
         // Both should be non-negative
         assert!(total >= 0);
         assert!(io >= 0);
+    }
+
+    #[test]
+    fn test_tail_write_read_text_mode() {
+        // Rust-specific: Test Tail serialization in text mode
+        use crate::grimoire::io::{Reader, Writer};
+
+        // Create tail with text mode data (NULL-terminated strings)
+        let mut tail = Tail::new();
+        // Add "apple\0" in reverse
+        for &c in b"elppa\0" {
+            tail.buf.push_back(c);
+        }
+        // Add "app\0" in reverse
+        for &c in b"ppa\0" {
+            tail.buf.push_back(c);
+        }
+
+        assert_eq!(tail.mode(), TailMode::TextTail);
+        assert!(!tail.empty());
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        tail.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut tail2 = Tail::new();
+        tail2.read(&mut reader).unwrap();
+
+        // Verify
+        assert_eq!(tail2.mode(), TailMode::TextTail);
+        assert_eq!(tail2.size(), tail.size());
+        for i in 0..tail.size() {
+            assert_eq!(tail2.get(i), tail.get(i));
+        }
+    }
+
+    #[test]
+    fn test_tail_write_read_binary_mode() {
+        // Rust-specific: Test Tail serialization in binary mode
+        use crate::grimoire::io::{Reader, Writer};
+
+        // Create tail with binary mode data (bit-vector terminated)
+        let mut tail = Tail::new();
+        // Add some bytes
+        tail.buf.push_back(b'a');
+        tail.buf.push_back(0); // NULL byte in data
+        tail.buf.push_back(b'b');
+        tail.buf.push_back(b'c');
+
+        // Add end flags (mark last byte as end)
+        tail.end_flags.push_back(false);
+        tail.end_flags.push_back(false);
+        tail.end_flags.push_back(false);
+        tail.end_flags.push_back(true);
+        tail.end_flags.build(false, false);
+
+        assert_eq!(tail.mode(), TailMode::BinaryTail);
+        assert!(!tail.empty());
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        tail.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut tail2 = Tail::new();
+        tail2.read(&mut reader).unwrap();
+
+        // Verify
+        assert_eq!(tail2.mode(), TailMode::BinaryTail);
+        assert_eq!(tail2.size(), tail.size());
+        for i in 0..tail.size() {
+            assert_eq!(tail2.get(i), tail.get(i));
+        }
+        // Verify end flags
+        for i in 0..4 {
+            assert_eq!(tail2.end_flags.get(i), tail.end_flags.get(i));
+        }
+    }
+
+    #[test]
+    fn test_tail_write_read_empty() {
+        // Rust-specific: Test empty Tail serialization
+        use crate::grimoire::io::{Reader, Writer};
+
+        let tail = Tail::new();
+        assert!(tail.empty());
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        tail.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut tail2 = Tail::new();
+        tail2.read(&mut reader).unwrap();
+
+        // Verify
+        assert!(tail2.empty());
+        assert_eq!(tail2.size(), 0);
+        assert_eq!(tail2.mode(), TailMode::TextTail);
     }
 }

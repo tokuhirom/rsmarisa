@@ -7,14 +7,15 @@
 //! This is the core trie data structure using LOUDS encoding for
 //! space-efficient storage while maintaining fast search operations.
 
+use crate::base::{CacheLevel, NodeOrder, TailMode};
 use crate::grimoire::io::{Mapper, Reader, Writer};
 use crate::grimoire::trie::cache::Cache;
 use crate::grimoire::trie::config::Config;
+use crate::grimoire::trie::key::{Key, ReverseKey};
 use crate::grimoire::trie::tail::Tail;
 use crate::grimoire::vector::bit_vector::BitVector;
 use crate::grimoire::vector::flat_vector::FlatVector;
 use crate::grimoire::vector::vector::Vector;
-use crate::base::{CacheLevel, TailMode, NodeOrder};
 
 /// LOUDS-based trie structure.
 ///
@@ -87,6 +88,18 @@ impl LoudsTrie {
         (self.louds.size() / 2).saturating_sub(1)
     }
 
+    /// Debug: returns if a node is terminal (for testing).
+    #[cfg(test)]
+    pub fn is_terminal(&self, node_id: usize) -> bool {
+        self.terminal_flags.get(node_id)
+    }
+
+    /// Debug: returns if a node has a link (for testing).
+    #[cfg(test)]
+    pub fn has_link(&self, node_id: usize) -> bool {
+        node_id < self.link_flags.size() && self.link_flags.get(node_id)
+    }
+
     /// Returns the cache level configuration.
     pub fn cache_level(&self) -> CacheLevel {
         self.config.cache_level()
@@ -146,8 +159,797 @@ impl LoudsTrie {
         std::mem::swap(self, other);
     }
 
-    // TODO: Implement I/O methods (map, read, write)
-    // These require BitVector, FlatVector, and Tail to have proper I/O support
+    /// Builds the trie from a keyset.
+    ///
+    /// # Arguments
+    ///
+    /// * `keyset` - Mutable keyset containing keys to build from
+    /// * `flags` - Configuration flags
+    pub fn build(&mut self, keyset: &mut crate::keyset::Keyset, flags: i32) {
+        use crate::grimoire::trie::config::Config;
+
+        let mut config = Config::new();
+        config.parse(flags);
+
+        let mut temp = LoudsTrie::new();
+        temp.build_(keyset, &config);
+        self.swap(&mut temp);
+    }
+
+    /// Internal build implementation.
+    fn build_(&mut self, keyset: &mut crate::keyset::Keyset, config: &Config) {
+        use crate::grimoire::trie::key::{Key, ReverseKey};
+        use crate::grimoire::vector::vector::Vector;
+
+        // Copy keys from keyset to Vector<Key>
+        let mut keys: Vector<Key> = Vector::new();
+        keys.resize(keyset.size(), Key::new());
+        for i in 0..keyset.size() {
+            let keyset_key = keyset.get(i);
+            keys[i].set_str(keyset_key.as_bytes());
+            keys[i].set_weight(keyset_key.weight());
+        }
+
+        // Build the trie structure
+        let mut terminals: Vector<u32> = Vector::new();
+        self.build_trie_key(&mut keys, &mut terminals, config, 1);
+
+        // Build terminal flags from sorted terminal positions
+        // Pairs of (node_id, original_index)
+        let mut pairs: Vec<(u32, u32)> = Vec::new();
+        for i in 0..terminals.size() {
+            pairs.push((terminals[i], i as u32));
+        }
+        pairs.sort_by_key(|p| p.0);
+
+        // Create terminal flags bit vector
+        let mut node_id = 0;
+        for &(terminal_node, _) in &pairs {
+            while node_id < terminal_node {
+                self.terminal_flags.push_back(false);
+                node_id += 1;
+            }
+            if node_id == terminal_node {
+                self.terminal_flags.push_back(true);
+                node_id += 1;
+            }
+        }
+        while node_id < self.bases.size() as u32 {
+            self.terminal_flags.push_back(false);
+            node_id += 1;
+        }
+        self.terminal_flags.push_back(false);
+        self.terminal_flags.build(false, true);
+
+        // Update keyset with final key IDs
+        for i in 0..keyset.size() {
+            let terminal_node = pairs[i].0;
+            let original_idx = pairs[i].1 as usize;
+            let key_id = self.terminal_flags.rank1(terminal_node as usize);
+            keyset.get_mut(original_idx).set_id(key_id);
+        }
+    }
+
+    /// Builds a trie level with Key type.
+    fn build_trie_key<'a>(
+        &mut self,
+        keys: &mut Vector<Key<'a>>,
+        terminals: &mut Vector<u32>,
+        config: &Config,
+        trie_id: usize,
+    ) {
+        use crate::grimoire::trie::key::ReverseKey;
+
+        self.build_current_trie_key(keys, terminals, config, trie_id);
+
+        let mut next_terminals: Vector<u32> = Vector::new();
+        if !keys.empty() {
+            self.build_next_trie_key(keys, &mut next_terminals, config, trie_id);
+        }
+
+        // Configure based on what was built
+        if self.next_trie.is_some() {
+            let next = self.next_trie.as_ref().unwrap();
+            let flags = ((next.num_tries() + 1) as i32)
+                | (next.tail_mode() as i32)
+                | (next.node_order() as i32);
+            self.config.parse(flags);
+        } else {
+            let flags = 1
+                | (self.tail.mode() as i32)
+                | (config.node_order() as i32)
+                | (config.cache_level() as i32);
+            self.config.parse(flags);
+        }
+
+        // Build link flags
+        self.link_flags.build(false, false);
+
+        // Set bases and extras for links
+        let mut node_id = 0;
+        for i in 0..next_terminals.size() {
+            while !self.link_flags.get(node_id) {
+                node_id += 1;
+            }
+            self.bases[node_id] = (next_terminals[i] % 256) as u8;
+            next_terminals[i] /= 256;
+            node_id += 1;
+        }
+        self.extras.build(&next_terminals);
+
+        self.fill_cache();
+    }
+
+    /// Builds the current trie level with Key type.
+    fn build_current_trie_key<'a>(
+        &mut self,
+        keys: &mut Vector<Key<'a>>,
+        terminals: &mut Vector<u32>,
+        config: &Config,
+        trie_id: usize,
+    ) {
+        use crate::grimoire::algorithm::sort;
+        use crate::grimoire::trie::range::{make_range, make_weighted_range, Range, WeightedRange};
+        use std::collections::VecDeque;
+
+        // Set IDs for sorting
+        for i in 0..keys.size() {
+            keys[i].set_id(i);
+        }
+
+        // Sort keys
+        let num_keys = {
+            let key_slice = keys.as_mut_slice();
+            sort::sort(key_slice)
+        };
+        self.reserve_cache(config, trie_id, num_keys);
+
+        // Initialize LOUDS with root
+        self.louds.push_back(true);
+        self.louds.push_back(false);
+        self.bases.push_back(0);
+        self.link_flags.push_back(false);
+
+        let mut queue: VecDeque<Range> = VecDeque::new();
+        let mut w_ranges: Vec<WeightedRange> = Vec::new();
+
+        // Store raw pointers to avoid borrow checker issues
+        // The actual data lives in the original keyset (lifetime 'a)
+        let mut next_key_data: Vec<(*const [u8], f32)> = Vec::new(); // (ptr to bytes, weight)
+
+        queue.push_back(make_range(0, keys.size(), 0));
+
+        while let Some(mut range) = queue.pop_front() {
+            // Note: We calculate node_id based on queue size *after* pop,
+            // but we need to add 1 to account for the element we just popped
+            let node_id = self.link_flags.size() - queue.len() - 1;
+
+            // Mark terminals at this position
+            while range.begin() < range.end() && keys[range.begin()].length() == range.key_pos() {
+                keys[range.begin()].set_terminal(node_id);
+                range.set_begin(range.begin() + 1);
+            }
+
+            if range.begin() == range.end() {
+                self.louds.push_back(false);
+                continue;
+            }
+
+            // Group by first character, accumulating weights
+            w_ranges.clear();
+            let mut weight = keys[range.begin()].weight() as f64;
+            let mut group_start = range.begin();
+
+            for i in (range.begin() + 1)..range.end() {
+                if keys[i - 1].get(range.key_pos()) != keys[i].get(range.key_pos()) {
+                    w_ranges.push(make_weighted_range(
+                        group_start,
+                        i,
+                        range.key_pos(),
+                        weight as f32,
+                    ));
+                    group_start = i;
+                    weight = 0.0;
+                }
+                weight += keys[i].weight() as f64;
+            }
+            w_ranges.push(make_weighted_range(
+                group_start,
+                range.end(),
+                range.key_pos(),
+                weight as f32,
+            ));
+
+            // Sort by weight if configured
+            if config.node_order() == crate::base::NodeOrder::Weight {
+                w_ranges.sort_by(|a, b| b.cmp(a)); // Descending order
+            }
+
+            // Track level 1 node count
+            if node_id == 0 {
+                self.num_l1_nodes = w_ranges.len();
+            }
+
+            // Process each group
+            for w_range in &mut w_ranges {
+                // Find common prefix length
+                let mut key_pos = w_range.key_pos() + 1;
+                while key_pos < keys[w_range.begin()].length() {
+                    let mut all_same = true;
+                    for j in (w_range.begin() + 1)..w_range.end() {
+                        if keys[j - 1].get(key_pos) != keys[j].get(key_pos) {
+                            all_same = false;
+                            break;
+                        }
+                    }
+                    if !all_same {
+                        break;
+                    }
+                    key_pos += 1;
+                }
+
+                // Add to cache (stub - will implement later)
+                let label = keys[w_range.begin()].get(w_range.key_pos());
+                self.cache_entry(node_id, self.bases.size(), w_range.weight(), label);
+
+                if key_pos == w_range.key_pos() + 1 {
+                    // Single character - store in bases
+                    self.bases.push_back(label);
+                    self.link_flags.push_back(false);
+                } else {
+                    // Multi-character - store pointer for creating next_keys later
+                    self.bases.push_back(0);
+                    self.link_flags.push_back(true);
+
+                    let start = w_range.key_pos();
+                    let len = key_pos - w_range.key_pos();
+                    let key_bytes = keys[w_range.begin()].as_bytes();
+                    let substring = &key_bytes[start..start + len];
+                    // Store raw pointer to avoid borrow checker issues
+                    // SAFETY: The slice is valid for lifetime 'a (from original keyset)
+                    let ptr: *const [u8] = substring as *const [u8];
+                    next_key_data.push((ptr, w_range.weight()));
+                }
+
+                w_range.set_key_pos(key_pos);
+                queue.push_back(*w_range.range());
+                self.louds.push_back(true);
+            }
+            self.louds.push_back(false);
+        }
+
+        self.louds.push_back(false);
+        self.louds.build(trie_id == 1, true);
+        self.bases.shrink();
+
+        self.build_terminals_key(keys, terminals);
+
+        // Now clear keys and populate with new Keys from stored pointers
+        keys.clear();
+        for (ptr, weight) in next_key_data {
+            // SAFETY: The pointer is valid for lifetime 'a (from original keyset)
+            // and keys vector lifetime doesn't affect the validity of the original data
+            let substring: &[u8] = unsafe { &*ptr };
+
+            let mut next_key = Key::new();
+            next_key.set_str(substring);
+            next_key.set_weight(weight);
+            keys.push_back(next_key);
+        }
+    }
+
+    /// Builds next trie or tail for Key type.
+    fn build_next_trie_key<'a>(
+        &mut self,
+        keys: &mut Vector<Key<'a>>,
+        terminals: &mut Vector<u32>,
+        config: &Config,
+        trie_id: usize,
+    ) {
+        use crate::grimoire::trie::entry::Entry;
+        use crate::grimoire::trie::key::ReverseKey;
+
+        if trie_id == config.num_tries() {
+            // Build tail storage
+            let mut entries: Vector<Entry> = Vector::new();
+            entries.resize(keys.size(), Entry::new());
+            for i in 0..keys.size() {
+                entries[i].set_str(keys[i].as_bytes());
+            }
+            self.tail.build(&mut entries, terminals, config.tail_mode());
+            return;
+        }
+
+        // Build next trie level with reversed keys
+        // Collect data using raw pointers to avoid borrow checker issues
+        let reverse_key_data: Vec<(*const [u8], f32)> = (0..keys.size())
+            .map(|i| {
+                let bytes = keys[i].as_bytes();
+                let ptr: *const [u8] = bytes as *const [u8];
+                (ptr, keys[i].weight())
+            })
+            .collect();
+
+        keys.clear();
+
+        let mut reverse_keys: Vector<ReverseKey> = Vector::new();
+        for (ptr, weight) in reverse_key_data {
+            // SAFETY: The pointer is valid for lifetime 'a (from original keyset)
+            let bytes: &[u8] = unsafe { &*ptr };
+            let mut rev_key = ReverseKey::new();
+            rev_key.set_str(bytes);
+            rev_key.set_weight(weight);
+            reverse_keys.push_back(rev_key);
+        }
+
+        self.next_trie = Some(Box::new(LoudsTrie::new()));
+        self.next_trie.as_mut().unwrap().build_trie_reverse(
+            &mut reverse_keys,
+            terminals,
+            config,
+            trie_id + 1,
+        );
+    }
+
+    /// Builds a trie level with ReverseKey type.
+    fn build_trie_reverse<'a>(
+        &mut self,
+        keys: &mut Vector<ReverseKey<'a>>,
+        terminals: &mut Vector<u32>,
+        config: &Config,
+        trie_id: usize,
+    ) {
+        self.build_current_trie_reverse(keys, terminals, config, trie_id);
+
+        let mut next_terminals: Vector<u32> = Vector::new();
+        if !keys.empty() {
+            self.build_next_trie_reverse(keys, &mut next_terminals, config, trie_id);
+        }
+
+        // Configure based on what was built
+        if self.next_trie.is_some() {
+            let next = self.next_trie.as_ref().unwrap();
+            let flags = ((next.num_tries() + 1) as i32)
+                | (next.tail_mode() as i32)
+                | (next.node_order() as i32);
+            self.config.parse(flags);
+        } else {
+            let flags = 1
+                | (self.tail.mode() as i32)
+                | (config.node_order() as i32)
+                | (config.cache_level() as i32);
+            self.config.parse(flags);
+        }
+
+        // Build link flags
+        self.link_flags.build(false, false);
+
+        // Set bases and extras for links
+        let mut node_id = 0;
+        for i in 0..next_terminals.size() {
+            while !self.link_flags.get(node_id) {
+                node_id += 1;
+            }
+            self.bases[node_id] = (next_terminals[i] % 256) as u8;
+            next_terminals[i] /= 256;
+            node_id += 1;
+        }
+        self.extras.build(&next_terminals);
+
+        self.fill_cache();
+    }
+
+    /// Builds the current trie level with ReverseKey type.
+    fn build_current_trie_reverse<'a>(
+        &mut self,
+        keys: &mut Vector<ReverseKey<'a>>,
+        terminals: &mut Vector<u32>,
+        config: &Config,
+        trie_id: usize,
+    ) {
+        use crate::grimoire::algorithm::sort;
+        use crate::grimoire::trie::range::{make_range, make_weighted_range, Range, WeightedRange};
+        use std::collections::VecDeque;
+
+        // Set IDs for sorting
+        for i in 0..keys.size() {
+            keys[i].set_id(i);
+        }
+
+        // Sort keys
+        let num_keys = {
+            let key_slice = keys.as_mut_slice();
+            sort::sort(key_slice)
+        };
+        self.reserve_cache(config, trie_id, num_keys);
+
+        // Initialize LOUDS with root
+        self.louds.push_back(true);
+        self.louds.push_back(false);
+        self.bases.push_back(0);
+        self.link_flags.push_back(false);
+
+        // Store raw pointers to avoid borrow checker issues
+        let mut next_key_data: Vec<(*const [u8], f32)> = Vec::new();
+
+        let mut queue: VecDeque<Range> = VecDeque::new();
+        let mut w_ranges: Vec<WeightedRange> = Vec::new();
+
+        queue.push_back(make_range(0, keys.size(), 0));
+
+        while let Some(mut range) = queue.pop_front() {
+            // Note: We calculate node_id based on queue size *after* pop,
+            // but we need to add 1 to account for the element we just popped
+            let node_id = self.link_flags.size() - queue.len() - 1;
+
+            // Mark terminals at this position
+            while range.begin() < range.end() && keys[range.begin()].length() == range.key_pos() {
+                keys[range.begin()].set_terminal(node_id);
+                range.set_begin(range.begin() + 1);
+            }
+
+            if range.begin() == range.end() {
+                self.louds.push_back(false);
+                continue;
+            }
+
+            // Group by first character, accumulating weights
+            w_ranges.clear();
+            let mut weight = keys[range.begin()].weight() as f64;
+            let mut group_start = range.begin();
+
+            for i in (range.begin() + 1)..range.end() {
+                if keys[i - 1].get(range.key_pos()) != keys[i].get(range.key_pos()) {
+                    w_ranges.push(make_weighted_range(
+                        group_start,
+                        i,
+                        range.key_pos(),
+                        weight as f32,
+                    ));
+                    group_start = i;
+                    weight = 0.0;
+                }
+                weight += keys[i].weight() as f64;
+            }
+            w_ranges.push(make_weighted_range(
+                group_start,
+                range.end(),
+                range.key_pos(),
+                weight as f32,
+            ));
+
+            // Sort by weight if configured
+            if config.node_order() == crate::base::NodeOrder::Weight {
+                w_ranges.sort_by(|a, b| b.cmp(a)); // Descending order
+            }
+
+            // Track level 1 node count
+            if node_id == 0 {
+                self.num_l1_nodes = w_ranges.len();
+            }
+
+            // Process each group
+            for w_range in &mut w_ranges {
+                // Find common prefix length
+                let mut key_pos = w_range.key_pos() + 1;
+                while key_pos < keys[w_range.begin()].length() {
+                    let mut all_same = true;
+                    for j in (w_range.begin() + 1)..w_range.end() {
+                        if keys[j - 1].get(key_pos) != keys[j].get(key_pos) {
+                            all_same = false;
+                            break;
+                        }
+                    }
+                    if !all_same {
+                        break;
+                    }
+                    key_pos += 1;
+                }
+
+                // Add to cache (for ReverseKey, use get_cache_id without label)
+                self.cache_entry_reverse(node_id, self.bases.size(), w_range.weight());
+
+                if key_pos == w_range.key_pos() + 1 {
+                    // Single character - store in bases
+                    let label = keys[w_range.begin()].get(w_range.key_pos());
+                    self.bases.push_back(label);
+                    self.link_flags.push_back(false);
+                } else {
+                    // Multi-character - store pointer for creating next_keys later
+                    self.bases.push_back(0);
+                    self.link_flags.push_back(true);
+
+                    let start = w_range.key_pos();
+                    let len = key_pos - w_range.key_pos();
+                    let key_bytes = keys[w_range.begin()].as_bytes();
+                    let substring = &key_bytes[start..start + len];
+                    // Store raw pointer to avoid borrow checker issues
+                    // SAFETY: The slice is valid for lifetime 'a (from original keyset)
+                    let ptr: *const [u8] = substring as *const [u8];
+                    next_key_data.push((ptr, w_range.weight()));
+                }
+
+                w_range.set_key_pos(key_pos);
+                queue.push_back(*w_range.range());
+                self.louds.push_back(true);
+            }
+            self.louds.push_back(false);
+        }
+
+        self.louds.push_back(false);
+        self.louds.build(trie_id == 1, true);
+        self.bases.shrink();
+
+        self.build_terminals_reverse(keys, terminals);
+
+        // Now clear keys and populate with new Keys from stored pointers
+        keys.clear();
+        for (ptr, weight) in next_key_data {
+            // SAFETY: The pointer is valid for lifetime 'a (from original keyset)
+            let substring: &[u8] = unsafe { &*ptr };
+
+            let mut next_key = ReverseKey::new();
+            next_key.set_str(substring);
+            next_key.set_weight(weight);
+            keys.push_back(next_key);
+        }
+    }
+
+    /// Builds next trie or tail for ReverseKey type.
+    fn build_next_trie_reverse<'a>(
+        &mut self,
+        keys: &mut Vector<ReverseKey<'a>>,
+        terminals: &mut Vector<u32>,
+        config: &Config,
+        trie_id: usize,
+    ) {
+        use crate::grimoire::trie::entry::Entry;
+
+        if trie_id == config.num_tries() {
+            // Build tail storage
+            let mut entries: Vector<Entry> = Vector::new();
+            entries.resize(keys.size(), Entry::new());
+            for i in 0..keys.size() {
+                entries[i].set_str(keys[i].as_bytes());
+            }
+            self.tail.build(&mut entries, terminals, config.tail_mode());
+            return;
+        }
+
+        // Build next trie level (shouldn't happen for reverse keys in practice)
+        self.next_trie = Some(Box::new(LoudsTrie::new()));
+        self.next_trie
+            .as_mut()
+            .unwrap()
+            .build_trie_reverse(keys, terminals, config, trie_id + 1);
+    }
+
+    /// Collects terminal positions from reverse keys.
+    fn build_terminals_reverse<'a>(
+        &self,
+        keys: &Vector<ReverseKey<'a>>,
+        terminals: &mut Vector<u32>,
+    ) {
+        let mut temp: Vector<u32> = Vector::new();
+        temp.resize(keys.size(), 0);
+        for i in 0..keys.size() {
+            temp[keys[i].id()] = keys[i].terminal() as u32;
+        }
+        terminals.swap(&mut temp);
+    }
+
+    /// Adds a cache entry for ReverseKey type.
+    fn cache_entry_reverse(&mut self, _parent: usize, child: usize, weight: f32) {
+        let cache_id = self.get_cache_id(child);
+        if weight > self.cache[cache_id].weight() {
+            self.cache[cache_id].set_parent(_parent);
+            self.cache[cache_id].set_child(child);
+            self.cache[cache_id].set_weight(weight);
+        }
+    }
+
+    /// Collects terminal positions from keys.
+    fn build_terminals_key<'a>(&self, keys: &Vector<Key<'a>>, terminals: &mut Vector<u32>) {
+        let mut temp: Vector<u32> = Vector::new();
+        temp.resize(keys.size(), 0);
+        for i in 0..keys.size() {
+            temp[keys[i].id()] = keys[i].terminal() as u32;
+        }
+        terminals.swap(&mut temp);
+    }
+
+    /// Reserves cache based on configuration.
+    fn reserve_cache(&mut self, config: &Config, trie_id: usize, num_keys: usize) {
+        // Cache level value is the divisor
+        let cache_level = config.cache_level() as i32 as usize;
+
+        let mut cache_size = if trie_id == 1 { 256 } else { 1 };
+        while cache_size < (num_keys / cache_level) {
+            cache_size *= 2;
+        }
+
+        self.cache.resize(cache_size, Cache::new());
+        self.cache_mask = cache_size - 1;
+    }
+
+    /// Adds a cache entry for Key type.
+    fn cache_entry(&mut self, parent: usize, child: usize, weight: f32, label: u8) {
+        assert!(parent < child, "Parent must be less than child");
+
+        let cache_id = self.get_cache_id_with_label(parent, label);
+        if weight > self.cache[cache_id].weight() {
+            self.cache[cache_id].set_parent(parent);
+            self.cache[cache_id].set_child(child);
+            self.cache[cache_id].set_weight(weight);
+        }
+    }
+
+    /// Fills the cache after building.
+    fn fill_cache(&mut self) {
+        use crate::base::INVALID_EXTRA;
+
+        for i in 0..self.cache.size() {
+            let node_id = self.cache[i].child();
+            if node_id != 0 {
+                self.cache[i].set_base(self.bases[node_id]);
+                if !self.link_flags.get(node_id) {
+                    self.cache[i].set_extra(INVALID_EXTRA as usize);
+                } else {
+                    let link_id = self.link_flags.rank1(node_id);
+                    // Check if extras has been built and has the required index
+                    if link_id < self.extras.size() {
+                        self.cache[i].set_extra(self.extras.get(link_id) as usize);
+                    } else {
+                        self.cache[i].set_extra(INVALID_EXTRA as usize);
+                    }
+                }
+            } else {
+                self.cache[i].set_parent(u32::MAX as usize);
+                self.cache[i].set_child(u32::MAX as usize);
+            }
+        }
+    }
+
+    /// Maps the trie from memory (stub).
+    ///
+    /// # Arguments
+    ///
+    /// * `_mapper` - Mapper for memory-mapped access
+    ///
+    /// TODO: Implement when BitVector, FlatVector, Tail have proper I/O support
+    #[allow(dead_code)]
+    pub fn map(&mut self, _mapper: &mut Mapper) {
+        // Stub - requires proper I/O support in all components
+    }
+
+    /// Reads the trie from a reader (with header).
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - Reader to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading fails or header is invalid
+    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+        use crate::grimoire::trie::header::Header;
+        Header::new().read(reader)?;
+        self.read_internal(reader)
+    }
+
+    /// Writes the trie to a writer (with header).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Writer to write to
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing fails
+    pub fn write(&self, writer: &mut Writer) -> std::io::Result<()> {
+        use crate::grimoire::trie::header::Header;
+        Header::new().write(writer)?;
+        self.write_internal(writer)
+    }
+
+    /// Reads the trie from a reader (internal version without header).
+    ///
+    /// Format:
+    /// - louds: BitVector
+    /// - terminal_flags: BitVector
+    /// - link_flags: BitVector
+    /// - bases: Vector<u8>
+    /// - extras: FlatVector
+    /// - tail: Tail
+    /// - next_trie: Optional recursive LoudsTrie (if link_flags.num_1s() != 0 && tail.empty())
+    /// - cache: Vector<Cache>
+    /// - num_l1_nodes: u32
+    /// - config_flags: u32
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - Reader to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading fails
+    fn read_internal(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+        // Read all component data structures
+        self.louds.read(reader)?;
+        self.terminal_flags.read(reader)?;
+        self.link_flags.read(reader)?;
+        self.bases.read(reader)?;
+        self.extras.read(reader)?;
+        self.tail.read(reader)?;
+
+        // Check if next_trie should exist
+        if self.link_flags.num_1s() != 0 && self.tail.empty() {
+            let mut next = Box::new(LoudsTrie::new());
+            next.read_internal(reader)?;
+            self.next_trie = Some(next);
+        }
+
+        // Read cache
+        self.cache.read(reader)?;
+        self.cache_mask = self.cache.size().saturating_sub(1);
+
+        // Read num_l1_nodes
+        let temp_num_l1_nodes: u32 = reader.read()?;
+        self.num_l1_nodes = temp_num_l1_nodes as usize;
+
+        // Read and parse config flags
+        let temp_config_flags: u32 = reader.read()?;
+        self.config.parse(temp_config_flags as i32);
+
+        Ok(())
+    }
+
+    /// Writes the trie to a writer (internal version without header).
+    ///
+    /// Format:
+    /// - louds: BitVector
+    /// - terminal_flags: BitVector
+    /// - link_flags: BitVector
+    /// - bases: Vector<u8>
+    /// - extras: FlatVector
+    /// - tail: Tail
+    /// - next_trie: Optional recursive LoudsTrie (if exists)
+    /// - cache: Vector<Cache>
+    /// - num_l1_nodes: u32
+    /// - config_flags: u32
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Writer to write to
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing fails
+    fn write_internal(&self, writer: &mut Writer) -> std::io::Result<()> {
+        // Write all component data structures
+        self.louds.write(writer)?;
+        self.terminal_flags.write(writer)?;
+        self.link_flags.write(writer)?;
+        self.bases.write(writer)?;
+        self.extras.write(writer)?;
+        self.tail.write(writer)?;
+
+        // Write next_trie if it exists
+        if let Some(ref next) = self.next_trie {
+            next.write_internal(writer)?;
+        }
+
+        // Write cache
+        self.cache.write(writer)?;
+
+        // Write num_l1_nodes as u32
+        writer.write(&(self.num_l1_nodes as u32))?;
+
+        // Write config flags as u32
+        writer.write(&(self.config.flags() as u32))?;
+
+        Ok(())
+    }
 
     /// Looks up a key in the trie.
     ///
@@ -184,10 +986,9 @@ impl LoudsTrie {
             return false;
         }
 
-        // Set result key
-        let query_bytes = agent.query().as_bytes().to_vec();
-        agent.set_key_bytes(&query_bytes);
+        // Set result key - point to the query buffer owned by agent
         let key_id = self.terminal_flags.rank1(node_id);
+        agent.set_key_from_query();
         agent.set_key_id(key_id);
 
         true
@@ -406,9 +1207,8 @@ impl LoudsTrie {
                     let query_pos = state.query_pos();
                     drop(state);
 
-                    let query_bytes = agent.query().as_bytes().to_vec();
-                    agent.set_key_bytes(&query_bytes[..query_pos]);
                     let key_id = self.terminal_flags.rank1(node_id);
+                    agent.set_key_from_query_prefix(query_pos);
                     agent.set_key_id(key_id);
                     return true;
                 }
@@ -429,9 +1229,8 @@ impl LoudsTrie {
             let node_id = agent.state().expect("Agent must have state").node_id();
             if self.terminal_flags.get(node_id) {
                 let query_pos = agent.state().expect("Agent must have state").query_pos();
-                let query_bytes = agent.query().as_bytes().to_vec();
-                agent.set_key_bytes(&query_bytes[..query_pos]);
                 let key_id = self.terminal_flags.rank1(node_id);
+                agent.set_key_from_query_prefix(query_pos);
                 agent.set_key_id(key_id);
                 return true;
             }
@@ -562,15 +1361,11 @@ impl LoudsTrie {
 
                     let state = agent.state_mut().expect("Agent must have state");
                     let key_len = state.key_buf().len();
-                    state
-                        .history_at_mut(history_pos)
-                        .set_key_pos(key_len);
+                    state.history_at_mut(history_pos).set_key_pos(key_len);
                 } else {
                     state.key_buf_mut().push(self.bases[next_node_id]);
                     let key_len = state.key_buf().len();
-                    state
-                        .history_at_mut(history_pos)
-                        .set_key_pos(key_len);
+                    state.history_at_mut(history_pos).set_key_pos(key_len);
                 }
 
                 // Check if terminal
@@ -720,7 +1515,12 @@ impl LoudsTrie {
     fn get_link_simple(&self, node_id: usize) -> usize {
         let base = self.bases[node_id] as usize;
         let extra_idx = self.link_flags.rank1(node_id);
-        let extra = self.extras.get(extra_idx) as usize;
+        // Defensive: Check if extras has the index (might be empty if tail not built yet)
+        let extra = if extra_idx < self.extras.size() {
+            self.extras.get(extra_idx) as usize
+        } else {
+            0
+        };
         base | (extra * 256)
     }
 
@@ -728,7 +1528,12 @@ impl LoudsTrie {
     #[inline]
     fn get_link_with_id(&self, node_id: usize, link_id: usize) -> usize {
         let base = self.bases[node_id] as usize;
-        let extra = self.extras.get(link_id) as usize;
+        // Defensive: Check if extras has the index (might be empty if tail not built yet)
+        let extra = if link_id < self.extras.size() {
+            self.extras.get(link_id) as usize
+        } else {
+            0
+        };
         base | (extra * 256)
     }
 
@@ -826,10 +1631,7 @@ impl LoudsTrie {
     /// Internal match implementation for recursive calls.
     fn match_(&self, agent: &mut crate::agent::Agent, node_id: usize) -> bool {
         let query_len = agent.query().length();
-        let mut query_pos = agent
-            .state()
-            .expect("Agent must have state")
-            .query_pos();
+        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
 
         assert!(query_pos < query_len, "Query position out of bounds");
         assert!(node_id != 0, "Node ID must not be 0");
@@ -896,10 +1698,7 @@ impl LoudsTrie {
     /// Internal prefix match implementation for recursive calls.
     fn prefix_match_(&self, agent: &mut crate::agent::Agent, node_id: usize) -> bool {
         let query_len = agent.query().length();
-        let mut query_pos = agent
-            .state()
-            .expect("Agent must have state")
-            .query_pos();
+        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
 
         assert!(query_pos < query_len, "Query position out of bounds");
         assert!(node_id != 0, "Node ID must not be 0");
@@ -1015,5 +1814,116 @@ mod tests {
         assert_eq!(trie.cache_level(), CacheLevel::Normal);
         assert_eq!(trie.tail_mode(), TailMode::TextTail);
         assert_eq!(trie.node_order(), NodeOrder::Weight);
+    }
+
+    #[test]
+    fn test_louds_trie_write_read_empty() {
+        // Rust-specific: Test empty LoudsTrie serialization
+        use crate::grimoire::io::{Reader, Writer};
+
+        let trie = LoudsTrie::new();
+        assert!(trie.empty());
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        trie.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut trie2 = LoudsTrie::new();
+        trie2.read(&mut reader).unwrap();
+
+        // Verify
+        assert!(trie2.empty());
+        assert_eq!(trie2.num_keys(), 0);
+        assert_eq!(trie2.num_nodes(), 0);
+    }
+
+    #[test]
+    fn test_louds_trie_write_read_with_keys() {
+        // Rust-specific: Test LoudsTrie serialization with keys
+        use crate::grimoire::io::{Reader, Writer};
+        use crate::keyset::Keyset;
+
+        // Build a trie with some keys
+        let mut keyset = Keyset::new();
+        keyset.push_back_str("app").unwrap();
+        keyset.push_back_str("apple").unwrap();
+        keyset.push_back_str("application").unwrap();
+
+        let mut trie = LoudsTrie::new();
+        trie.build(&mut keyset, 0);
+
+        assert!(!trie.empty());
+        assert_eq!(trie.num_keys(), 3);
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        trie.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut trie2 = LoudsTrie::new();
+        trie2.read(&mut reader).unwrap();
+
+        // Verify structure is preserved
+        assert_eq!(trie2.num_keys(), 3);
+        assert_eq!(trie2.num_nodes(), trie.num_nodes());
+        assert_eq!(trie2.tail_mode(), trie.tail_mode());
+        assert_eq!(trie2.node_order(), trie.node_order());
+
+        // Verify all keys can still be looked up
+        use crate::agent::Agent;
+
+        let mut agent = Agent::new();
+        agent.init_state().unwrap();
+
+        agent.set_query_str("app");
+        assert!(trie2.lookup(&mut agent));
+
+        agent.set_query_str("apple");
+        assert!(trie2.lookup(&mut agent));
+
+        agent.set_query_str("application");
+        assert!(trie2.lookup(&mut agent));
+
+        // Non-existent key
+        agent.set_query_str("apply");
+        assert!(!trie2.lookup(&mut agent));
+    }
+
+    #[test]
+    fn test_louds_trie_write_read_config_preserved() {
+        // Rust-specific: Test that configuration is preserved through serialization
+        use crate::base::{NodeOrder, TailMode};
+        use crate::grimoire::io::{Reader, Writer};
+        use crate::keyset::Keyset;
+
+        // Build a trie with specific configuration
+        let mut keyset = Keyset::new();
+        keyset.push_back_str("test").unwrap();
+
+        let mut trie = LoudsTrie::new();
+        let flags = (TailMode::TextTail as i32) | (NodeOrder::Label as i32);
+        trie.build(&mut keyset, flags);
+
+        // Write to buffer
+        let mut writer = Writer::from_vec(Vec::new());
+        trie.write(&mut writer).unwrap();
+
+        let data = writer.into_inner().unwrap();
+
+        // Read back
+        let mut reader = Reader::from_bytes(&data);
+        let mut trie2 = LoudsTrie::new();
+        trie2.read(&mut reader).unwrap();
+
+        // Verify configuration is preserved
+        assert_eq!(trie2.tail_mode(), TailMode::TextTail);
+        assert_eq!(trie2.node_order(), NodeOrder::Label);
     }
 }

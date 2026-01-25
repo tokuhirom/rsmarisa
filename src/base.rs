@@ -157,7 +157,6 @@ impl Default for CacheLevel {
     }
 }
 
-
 /// Node arrangement order.
 ///
 /// The arrangement affects matching time cost and predictive search order.
