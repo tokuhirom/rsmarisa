@@ -32,3 +32,19 @@ required-features = []
 [[bin]]
 name = "binary_compatibility_test"
 path = "bin/binary_compatibility_test.rs"
+
+[[bin]]
+name = "test_sort"
+path = "bin/test_sort.rs"
+
+[[bin]]
+name = "test_key_order"
+path = "bin/test_key_order.rs"
+
+[[bin]]
+name = "test_entry_sort"
+path = "bin/test_entry_sort.rs"
+
+[[bin]]
+name = "minimal_entry_test"
+path = "bin/minimal_entry_test.rs"
