@@ -16,7 +16,24 @@ A MARISA-based dictionary supports:
 
 ## Status
 
-🚧 **Work in Progress** - This is an early-stage port. The structure is being set up to mirror the original implementation.
+🚧 **Work in Progress** - Active development in progress.
+
+### Implemented
+
+- ✅ **RankIndex**: Bit-packed rank storage for efficient rank queries
+- ✅ **Vector<T>**: Generic container with serialization support
+- ✅ **popcount**: Hardware-accelerated bit counting
+- ✅ **BitVector** (partial):
+  - Basic operations: `push_back()`, `get()`, `size()`, `clear()`, `swap()`
+  - Rank operations: `rank0()`, `rank1()` with O(1) complexity
+  - Index building: `build()` with rank index construction
+- 🚧 **BitVector** select operations (TODO)
+
+### Testing
+
+- 30 comprehensive tests covering all implemented functionality
+- All tests passing ✅
+- Platform-specific tests for 32-bit and 64-bit systems
 
 ## Original Project
 
