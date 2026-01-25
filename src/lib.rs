@@ -33,6 +33,8 @@
 
 pub mod base;
 pub mod grimoire;
+pub mod key;
+pub mod query;
 
 // Re-export main types at the crate root
 // These correspond to the public API in include/marisa/*.h
