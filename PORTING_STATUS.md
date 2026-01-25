@@ -61,7 +61,7 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 | C++ File | Rust Module | Status | Notes |
 |----------|-------------|--------|-------|
-| lib/marisa/grimoire/vector/bit-vector.{h,cc} | src/grimoire/vector/bit_vector.rs | 🚧 | Basic ops + rank. TODO: select |
+| lib/marisa/grimoire/vector/bit-vector.{h,cc} | src/grimoire/vector/bit_vector.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/vector/flat-vector.h | src/grimoire/vector/flat_vector.rs | 🚧 | Stub only |
 | lib/marisa/grimoire/vector/vector.h | src/grimoire/vector/vector.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/vector/pop-count.h | src/grimoire/vector/pop_count.rs | ✅ | Completed with tests |
@@ -108,21 +108,22 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 ## Progress Summary
 
 - **Total files to port**: ~50+
-- **Completed**: 3 (Vector<T>, pop_count, RankIndex)
-- **Partially complete**: 1 (BitVector - has basic ops + rank, missing select)
+- **Completed**: 4 (Vector<T>, pop_count, RankIndex, BitVector)
 - **In progress**: ~25 (others structure only)
 - **Pending**: ~25+
-- **Tests passing**: 30 tests
-- **Lines of code**: ~1,900 lines
+- **Tests passing**: 44 tests
+- **Lines of code**: ~2,600 lines
 
 ## Recent Achievements
 
-- ✅ BitVector basic operations (push_back, get, size, clear, swap)
+- ✅ BitVector complete: basic operations, rank, and select
+- ✅ BitVector select operations (select0, select1) with O(log n) complexity
+- ✅ select_bit helper functions for 64-bit and 32-bit platforms
+- ✅ SELECT_TABLE lookup table for byte-level select operations
 - ✅ BitVector rank operations (rank0, rank1) with O(1) complexity
 - ✅ RankIndex with bit-packed storage
 - ✅ Vector<T> generic container with serialization support
 - ✅ Platform-specific popcount implementations
-- 🚧 BitVector select operations (TODO: requires select_bit helper)
 
 ## Next Steps
 
