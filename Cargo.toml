@@ -52,3 +52,28 @@ path = "bin/test_a_app.rs"
 [[bin]]
 name = "test_load_cpp"
 path = "bin/test_load_cpp.rs"
+
+[[bin]]
+name = "test_15words_lookup"
+path = "bin/test_15words_lookup.rs"
+
+
+[[bin]]
+name = "simple_15words_test"
+path = "bin/simple_15words_test.rs"
+
+
+[[bin]]
+name = "debug_missing_words"
+path = "bin/debug_missing_words.rs"
+
+
+[[bin]]
+name = "debug_application"
+path = "bin/debug_application.rs"
+
+
+[[bin]]
+name = "find_breaking_point"
+path = "bin/find_breaking_point.rs"
+

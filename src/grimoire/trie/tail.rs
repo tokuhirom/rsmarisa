@@ -173,8 +173,10 @@ impl Tail {
                 temp_offsets[current.id()] = self.buf.size() as u32;
 
                 // Add bytes in reverse order
-                for j in (0..current.length()).rev() {
-                    self.buf.push_back(current.get(j));
+                // Note: Entry::get(j) already accesses in reverse (ptr - j),
+                // so we need to iterate forward to get reverse storage
+                for j in 0..current.length() {
+                    self.buf.push_back(current.get(current.length() - 1 - j));
                 }
 
                 // Add terminator
@@ -305,9 +307,15 @@ impl Tail {
 
         if self.end_flags.empty() {
             // Text mode
-            let start_offset = offset - query_pos;
+            // In C++: const char *const ptr = &buf_[offset] - state.query_pos();
+            // Then ptr[query_pos + i] accesses buf_[offset + i]
+            // We track the initial query_pos and compute: buf[offset + (current_query_pos - initial_query_pos)]
+            let initial_query_pos = query_pos;
+
             loop {
-                if self.buf[start_offset + query_pos] != query_bytes[query_pos] {
+                // Access buf[offset + (query_pos - initial_query_pos)]
+                let buf_index = offset + (query_pos - initial_query_pos);
+                if buf_index >= self.buf.size() || self.buf[buf_index] != query_bytes[query_pos] {
                     return false;
                 }
                 query_pos += 1;
@@ -316,9 +324,8 @@ impl Tail {
                     .expect("Agent must have state")
                     .set_query_pos(query_pos);
 
-                if start_offset + query_pos >= self.buf.size()
-                    || self.buf[start_offset + query_pos] == 0
-                {
+                let buf_index = offset + (query_pos - initial_query_pos);
+                if buf_index >= self.buf.size() || self.buf[buf_index] == 0 {
                     return true;
                 }
 
