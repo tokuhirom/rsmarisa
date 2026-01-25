@@ -51,7 +51,7 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 | lib/marisa/grimoire/trie/cache.h | src/grimoire/trie/cache.rs | 🚧 | Stub only |
 | lib/marisa/grimoire/trie/config.h | src/grimoire/trie/config.rs | 🚧 | Stub only |
 | lib/marisa/grimoire/trie/entry.h | src/grimoire/trie/entry.rs | 🚧 | Stub only |
-| lib/marisa/grimoire/trie/header.h | src/grimoire/trie/header.rs | 🚧 | Stub only |
+| lib/marisa/grimoire/trie/header.h | src/grimoire/trie/header.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/trie/history.h | src/grimoire/trie/history.rs | 🚧 | Stub only |
 | lib/marisa/grimoire/trie/key.h | src/grimoire/trie/key.rs | 🚧 | Stub only |
 | lib/marisa/grimoire/trie/range.h | src/grimoire/trie/range.rs | 🚧 | Stub only |
@@ -108,11 +108,11 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 ## Progress Summary
 
 - **Total files to port**: ~50+
-- **Completed**: 5 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector)
+- **Completed**: 6 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector, Header)
 - **In progress**: ~25 (others structure only)
 - **Pending**: ~25+
-- **Tests passing**: 54 tests
-- **Lines of code**: ~3,000 lines
+- **Tests passing**: 62 tests
+- **Lines of code**: ~3,200 lines
 
 ## Recent Achievements
 
