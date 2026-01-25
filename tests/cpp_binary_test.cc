@@ -1,63 +1,39 @@
-// C++ binary compatibility test
-// This creates a binary file using the original marisa-trie library
-
 #include <marisa.h>
 #include <iostream>
-#include <fstream>
+#include <iomanip>
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <output_file>" << std::endl;
-        return 1;
-    }
-
-    const char *output_file = argv[1];
-
-    // Create a keyset with the same test data as Rust version
+int main() {
     marisa::Keyset keyset;
-    const char *words[] = {
-        "a",
-        "app",
-        "apple",
-        "application",
-        "apply",
-        "banana",
-        "band",
-        "bank",
-        "can",
-        "cat",
-        "dog",
-        "door",
-        "test",
-        "testing",
-        "trie",
-    };
 
-    int num_words = sizeof(words) / sizeof(words[0]);
-    std::cout << "Creating trie with " << num_words << " words" << std::endl;
+    // Test case that fails in Rust
+    keyset.push_back("a");
+    keyset.push_back("app");
 
-    for (int i = 0; i < num_words; i++) {
-        keyset.push_back(words[i]);
-    }
-
-    // Build trie
     marisa::Trie trie;
     trie.build(keyset);
 
-    std::cout << "Trie stats:" << std::endl;
-    std::cout << "  Keys: " << trie.num_keys() << std::endl;
-    std::cout << "  Nodes: " << trie.num_nodes() << std::endl;
-    std::cout << "  I/O size: " << trie.io_size() << " bytes" << std::endl;
+    std::cout << "Built trie with [\"a\", \"app\"]" << std::endl;
+    std::cout << "  num_keys: " << trie.num_keys() << std::endl;
+    std::cout << "  num_nodes: " << trie.num_nodes() << std::endl;
+    std::cout << std::endl;
 
-    // Save to file
-    trie.save(output_file);
+    // Test lookup
+    const char* words[] = {"a", "app"};
+    for (int i = 0; i < 2; i++) {
+        marisa::Agent agent;
+        agent.set_query(words[i]);
 
-    // Check file size
-    std::ifstream file(output_file, std::ios::binary | std::ios::ate);
-    std::streamsize size = file.tellg();
-    file.close();
+        if (trie.lookup(agent)) {
+            std::cout << "✓ Found: " << words[i] << " (key_id=" << agent.key().id() << ")" << std::endl;
+        } else {
+            std::cout << "✗ NOT FOUND: " << words[i] << std::endl;
+        }
+    }
+    std::cout << std::endl;
 
-    std::cout << "Saved to '" << output_file << "': " << size << " bytes" << std::endl;
+    // Save to file for analysis
+    trie.save("tmp/cpp_a_app.marisa");
+    std::cout << "Saved to tmp/cpp_a_app.marisa" << std::endl;
 
     return 0;
 }

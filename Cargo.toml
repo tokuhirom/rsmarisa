@@ -44,3 +44,11 @@ path = "bin/test_key_order.rs"
 [[bin]]
 name = "test_entry_sort"
 path = "bin/test_entry_sort.rs"
+
+[[bin]]
+name = "test_a_app"
+path = "bin/test_a_app.rs"
+
+[[bin]]
+name = "test_load_cpp"
+path = "bin/test_load_cpp.rs"

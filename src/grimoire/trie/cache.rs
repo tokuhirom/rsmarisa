@@ -20,9 +20,10 @@ union LinkOrWeight {
 
 impl Default for LinkOrWeight {
     fn default() -> Self {
-        // Initialize to link=0 instead of weight=f32::MIN
-        // This ensures predictable behavior when switching between link and weight
-        LinkOrWeight { link: 0 }
+        // Match C++ initialization: weight = FLT_MIN
+        // C++'s FLT_MIN is the smallest positive normalized value, not the most negative
+        // This is important for binary compatibility
+        LinkOrWeight { weight: f32::MIN_POSITIVE }
     }
 }
 
