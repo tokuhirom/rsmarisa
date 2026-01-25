@@ -18,10 +18,10 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 |----------|-------------|--------|-------|
 | include/marisa.h | src/lib.rs | 🚧 | Main library entry |
 | include/marisa/base.h | src/base.rs | 🚧 | Error codes, constants, config types |
-| include/marisa/agent.h | - | ⏳ | Not started |
-| include/marisa/key.h | - | ⏳ | Not started |
-| include/marisa/keyset.h | - | ⏳ | Not started |
-| include/marisa/query.h | - | ⏳ | Not started |
+| include/marisa/agent.h | src/agent.rs | ✅ | Completed with tests |
+| include/marisa/key.h | src/key.rs | ✅ | Completed with tests |
+| include/marisa/keyset.h | src/keyset.rs | ✅ | Completed with tests |
+| include/marisa/query.h | src/query.rs | ✅ | Completed with tests |
 | include/marisa/trie.h | - | ⏳ | Not started |
 | include/marisa/iostream.h | - | ⏳ | Not started |
 | include/marisa/stdio.h | - | ⏳ | Not started |
@@ -30,8 +30,8 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 | C++ File | Rust Module | Status | Notes |
 |----------|-------------|--------|-------|
-| lib/marisa/agent.cc | - | ⏳ | Not started |
-| lib/marisa/keyset.cc | - | ⏳ | Not started |
+| lib/marisa/agent.cc | src/agent.rs | ✅ | Completed with tests |
+| lib/marisa/keyset.cc | src/keyset.rs | ✅ | Completed with tests |
 | lib/marisa/trie.cc | - | ⏳ | Not started |
 
 ### Grimoire - I/O (lib/marisa/grimoire/io/)
@@ -108,14 +108,18 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 ## Progress Summary
 
 - **Total files to port**: ~50+
-- **Completed**: 18 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector, Header, Config, Range, Key, Cache, History, Entry, State, Sort, Reader, Writer, Tail, Mapper)
+- **Completed**: 22 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector, Header, Config, Range, Key, Cache, History, Entry, State, Sort, Reader, Writer, Tail, Mapper, Query, public Key, Keyset, Agent)
 - **In progress**: ~18 (others structure only)
 - **Pending**: ~25+
-- **Tests passing**: 226 tests
+- **Tests passing**: 283 tests
 - **Lines of code**: ~7,200 lines
 
 ## Recent Achievements
 
+- ✅ Agent: Search agent with Query, Key, and State management
+- ✅ Keyset: Block-based key collection for trie construction
+- ✅ Key (public API): Dictionary key type with ID/weight union
+- ✅ Query: Search query type with string and ID support
 - ✅ Mapper: Memory-mapped data access for efficient deserialization
 - ✅ Tail: Suffix storage with TextTail and BinaryTail modes
 - ✅ Writer: Binary data serialization with dual backend support
