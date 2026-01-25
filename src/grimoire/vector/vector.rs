@@ -139,6 +139,19 @@ impl<T: Copy> Vector<T> {
         self.data.get_mut(index)
     }
 
+    /// Returns a reference to the last element, or None if empty.
+    #[inline]
+    pub fn back(&self) -> Option<&T> {
+        self.data.last()
+    }
+
+    /// Returns a mutable reference to the last element, or None if empty.
+    #[inline]
+    pub fn back_mut(&mut self) -> Option<&mut T> {
+        assert!(!self.fixed, "Cannot modify fixed vector");
+        self.data.last_mut()
+    }
+
     /// Clears the vector.
     #[inline]
     pub fn clear(&mut self) {
