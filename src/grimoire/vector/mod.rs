@@ -7,9 +7,12 @@
 //! - Flat vector: space-efficient integer vector
 //! - Pop count: population count utilities
 //! - Rank index: rank operation acceleration
+//! - Select tables: lookup tables for select operations
 
 pub mod bit_vector;
 pub mod flat_vector;
 pub mod pop_count;
 pub mod rank_index;
+pub mod select_bit;
+pub mod select_tables;
 pub mod vector;

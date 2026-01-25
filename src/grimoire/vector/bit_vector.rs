@@ -15,6 +15,11 @@ use super::vector::Vector;
 use crate::base::{ErrorCode, WORD_SIZE};
 use crate::grimoire::io::{Mapper, Reader, Writer};
 
+#[cfg(target_pointer_width = "64")]
+use super::select_bit::select_bit_u64;
+#[cfg(target_pointer_width = "32")]
+use super::select_bit::select_bit_u32;
+
 /// Bit vector supporting rank and select operations.
 ///
 /// A bit vector that stores bits compactly and supports efficient
@@ -325,9 +330,12 @@ impl BitVector {
                 // Wrapping negation to get modulo behavior
                 let zero_bit_id = (0usize.wrapping_sub(num_0s)) % 512;
                 if unit_num_0s > zero_bit_id {
-                    // TODO: implement select_bit() for proper select0 support
-                    // For now, just record approximate positions
-                    self.select0s.push_back((bit_id + zero_bit_id) as u32);
+                    // Use select_bit to find actual position of the zero_bit_id-th 0-bit
+                    #[cfg(target_pointer_width = "64")]
+                    let pos = select_bit_u64(zero_bit_id, bit_id, !unit);
+                    #[cfg(target_pointer_width = "32")]
+                    let pos = select_bit_u32(zero_bit_id, bit_id, !unit);
+                    self.select0s.push_back(pos as u32);
                 }
 
                 num_0s += unit_num_0s;
@@ -336,9 +344,12 @@ impl BitVector {
             if enables_select1 {
                 let one_bit_id = (0usize.wrapping_sub(num_1s)) % 512;
                 if unit_num_1s > one_bit_id {
-                    // TODO: implement select_bit() for proper select1 support
-                    // For now, just record approximate positions
-                    self.select1s.push_back((bit_id + one_bit_id) as u32);
+                    // Use select_bit to find actual position of the one_bit_id-th 1-bit
+                    #[cfg(target_pointer_width = "64")]
+                    let pos = select_bit_u64(one_bit_id, bit_id, unit);
+                    #[cfg(target_pointer_width = "32")]
+                    let pos = select_bit_u32(one_bit_id, bit_id, unit);
+                    self.select1s.push_back(pos as u32);
                 }
             }
 
@@ -387,7 +398,182 @@ impl BitVector {
         }
     }
 
-    // TODO: Implement select0(), select1() - these need select_bit() helper
+    /// Returns the position of the i-th 0-bit.
+    ///
+    /// # Arguments
+    ///
+    /// * `i` - The rank of the 0-bit to find (0-indexed)
+    ///
+    /// # Returns
+    ///
+    /// The position of the i-th 0-bit
+    ///
+    /// # Panics
+    ///
+    /// Panics if the select0 index is empty or if i >= num_0s()
+    #[cfg(target_pointer_width = "64")]
+    pub fn select0(&self, mut i: usize) -> usize {
+        assert!(!self.select0s.empty(), "Select0 index not built");
+        assert!(i < self.num_0s(), "Index out of bounds");
+
+        let select_id = i / 512;
+        assert!(select_id + 1 < self.select0s.size());
+
+        // Fast path for exact 512-bit boundaries
+        if (i % 512) == 0 {
+            return self.select0s[select_id] as usize;
+        }
+
+        // Binary/linear search to find the rank block
+        let mut begin = self.select0s[select_id] as usize / 512;
+        let mut end = (self.select0s[select_id + 1] as usize + 511) / 512;
+
+        if begin + 10 >= end {
+            // Linear search for small ranges
+            while i >= ((begin + 1) * 512) - self.ranks[begin + 1].abs() {
+                begin += 1;
+            }
+        } else {
+            // Binary search for large ranges
+            while begin + 1 < end {
+                let middle = (begin + end) / 2;
+                if i < (middle * 512) - self.ranks[middle].abs() {
+                    end = middle;
+                } else {
+                    begin = middle;
+                }
+            }
+        }
+
+        let rank_id = begin;
+        i -= (rank_id * 512) - self.ranks[rank_id].abs();
+
+        // Find the unit within the rank block using relative ranks
+        let rank = &self.ranks[rank_id];
+        let mut unit_id = rank_id * 8;
+
+        if i < (256 - rank.rel4()) {
+            if i < (128 - rank.rel2()) {
+                if i >= (64 - rank.rel1()) {
+                    unit_id += 1;
+                    i -= 64 - rank.rel1();
+                }
+            } else if i < (192 - rank.rel3()) {
+                unit_id += 2;
+                i -= 128 - rank.rel2();
+            } else {
+                unit_id += 3;
+                i -= 192 - rank.rel3();
+            }
+        } else if i < (384 - rank.rel6()) {
+            if i < (320 - rank.rel5()) {
+                unit_id += 4;
+                i -= 256 - rank.rel4();
+            } else {
+                unit_id += 5;
+                i -= 320 - rank.rel5();
+            }
+        } else if i < (448 - rank.rel7()) {
+            unit_id += 6;
+            i -= 384 - rank.rel6();
+        } else {
+            unit_id += 7;
+            i -= 448 - rank.rel7();
+        }
+
+        // Use select_bit to find the exact position within the unit
+        // For select0, we need to invert the bits
+        select_bit_u64(i, unit_id * 64, !self.units[unit_id])
+    }
+
+    /// Returns the position of the i-th 1-bit.
+    ///
+    /// # Arguments
+    ///
+    /// * `i` - The rank of the 1-bit to find (0-indexed)
+    ///
+    /// # Returns
+    ///
+    /// The position of the i-th 1-bit
+    ///
+    /// # Panics
+    ///
+    /// Panics if the select1 index is empty or if i >= num_1s()
+    #[cfg(target_pointer_width = "64")]
+    pub fn select1(&self, mut i: usize) -> usize {
+        assert!(!self.select1s.empty(), "Select1 index not built");
+        assert!(i < self.num_1s(), "Index out of bounds");
+
+        let select_id = i / 512;
+        assert!(select_id + 1 < self.select1s.size());
+
+        // Fast path for exact 512-bit boundaries
+        if (i % 512) == 0 {
+            return self.select1s[select_id] as usize;
+        }
+
+        // Binary/linear search to find the rank block
+        let mut begin = self.select1s[select_id] as usize / 512;
+        let mut end = (self.select1s[select_id + 1] as usize + 511) / 512;
+
+        if begin + 10 >= end {
+            // Linear search for small ranges
+            while i >= self.ranks[begin + 1].abs() {
+                begin += 1;
+            }
+        } else {
+            // Binary search for large ranges
+            while begin + 1 < end {
+                let middle = (begin + end) / 2;
+                if i < self.ranks[middle].abs() {
+                    end = middle;
+                } else {
+                    begin = middle;
+                }
+            }
+        }
+
+        let rank_id = begin;
+        i -= self.ranks[rank_id].abs();
+
+        // Find the unit within the rank block using relative ranks
+        let rank = &self.ranks[rank_id];
+        let mut unit_id = rank_id * 8;
+
+        if i < rank.rel4() {
+            if i < rank.rel2() {
+                if i >= rank.rel1() {
+                    unit_id += 1;
+                    i -= rank.rel1();
+                }
+            } else if i < rank.rel3() {
+                unit_id += 2;
+                i -= rank.rel2();
+            } else {
+                unit_id += 3;
+                i -= rank.rel3();
+            }
+        } else if i < rank.rel6() {
+            if i < rank.rel5() {
+                unit_id += 4;
+                i -= rank.rel4();
+            } else {
+                unit_id += 5;
+                i -= rank.rel5();
+            }
+        } else if i < rank.rel7() {
+            unit_id += 6;
+            i -= rank.rel6();
+        } else {
+            unit_id += 7;
+            i -= rank.rel7();
+        }
+
+        // Use select_bit to find the exact position within the unit
+        select_bit_u64(i, unit_id * 64, self.units[unit_id])
+    }
+
+    // TODO: Implement 32-bit versions of select0() and select1()
     // TODO: Implement map(), read(), write() for serialization
 }
 
@@ -570,5 +756,158 @@ mod tests {
         let mut bv = BitVector::new();
         bv.push_back(true);
         bv.rank1(1); // Should panic - index not built
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn test_bit_vector_select1_basic() {
+        let mut bv = BitVector::new();
+
+        // Create pattern: 1001 0010 0100 1000 (bits at positions 0, 3, 6, 11, 15)
+        bv.push_back(true);  // 0
+        bv.push_back(false); // 1
+        bv.push_back(false); // 2
+        bv.push_back(true);  // 3
+        bv.push_back(false); // 4
+        bv.push_back(false); // 5
+        bv.push_back(true);  // 6
+        bv.push_back(false); // 7
+        bv.push_back(false); // 8
+        bv.push_back(true);  // 9
+        bv.push_back(false); // 10
+        bv.push_back(false); // 11
+
+        bv.build(false, true);
+
+        // Find positions of 1-bits
+        assert_eq!(bv.select1(0), 0);
+        assert_eq!(bv.select1(1), 3);
+        assert_eq!(bv.select1(2), 6);
+        assert_eq!(bv.select1(3), 9);
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn test_bit_vector_select0_basic() {
+        let mut bv = BitVector::new();
+
+        // Create pattern: 1001 0010 0100 (0-bits at positions 1, 2, 4, 5, 7, 8, 10, 11)
+        bv.push_back(true);  // 0
+        bv.push_back(false); // 1
+        bv.push_back(false); // 2
+        bv.push_back(true);  // 3
+        bv.push_back(false); // 4
+        bv.push_back(false); // 5
+        bv.push_back(true);  // 6
+        bv.push_back(false); // 7
+        bv.push_back(false); // 8
+        bv.push_back(true);  // 9
+        bv.push_back(false); // 10
+        bv.push_back(false); // 11
+
+        bv.build(true, false);
+
+        // Find positions of 0-bits
+        assert_eq!(bv.select0(0), 1);
+        assert_eq!(bv.select0(1), 2);
+        assert_eq!(bv.select0(2), 4);
+        assert_eq!(bv.select0(3), 5);
+        assert_eq!(bv.select0(4), 7);
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn test_bit_vector_select1_large() {
+        let mut bv = BitVector::new();
+
+        // Create pattern with 1000 bits: every 3rd bit is 1
+        for i in 0..1000 {
+            bv.push_back(i % 3 == 0);
+        }
+
+        bv.build(false, true);
+
+        // Verify select1 is the inverse of rank1
+        let num_1s = bv.num_1s();
+        for i in 0..num_1s {
+            let pos = bv.select1(i);
+            assert_eq!(bv.rank1(pos), i);
+            assert_eq!(bv.rank1(pos + 1), i + 1);
+        }
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn test_bit_vector_select0_large() {
+        let mut bv = BitVector::new();
+
+        // Create pattern with 1000 bits: every 3rd bit is 1 (others are 0)
+        for i in 0..1000 {
+            bv.push_back(i % 3 == 0);
+        }
+
+        bv.build(true, false);
+
+        // Verify select0 is the inverse of rank0
+        let num_0s = bv.num_0s();
+        for i in 0..num_0s {
+            let pos = bv.select0(i);
+            assert_eq!(bv.rank0(pos), i);
+            assert_eq!(bv.rank0(pos + 1), i + 1);
+        }
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn test_bit_vector_select1_all_ones() {
+        let mut bv = BitVector::new();
+
+        for _ in 0..100 {
+            bv.push_back(true);
+        }
+
+        bv.build(false, true);
+
+        // For all 1s, select1(i) should return i
+        for i in 0..100 {
+            assert_eq!(bv.select1(i), i);
+        }
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn test_bit_vector_select0_all_zeros() {
+        let mut bv = BitVector::new();
+
+        for _ in 0..100 {
+            bv.push_back(false);
+        }
+
+        bv.build(true, false);
+
+        // For all 0s, select0(i) should return i
+        for i in 0..100 {
+            assert_eq!(bv.select0(i), i);
+        }
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    #[should_panic(expected = "Select1 index not built")]
+    fn test_bit_vector_select1_without_build() {
+        let mut bv = BitVector::new();
+        bv.push_back(true);
+        bv.build(false, false); // Don't build select1 index
+        bv.select1(0); // Should panic
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    #[should_panic(expected = "Select0 index not built")]
+    fn test_bit_vector_select0_without_build() {
+        let mut bv = BitVector::new();
+        bv.push_back(false);
+        bv.build(false, false); // Don't build select0 index
+        bv.select0(0); // Should panic
     }
 }
