@@ -7,17 +7,30 @@
 //! or weight values.
 
 /// Link or weight data stored in cache.
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum LinkOrWeight {
+///
+/// This uses a union to match the C++ implementation's size (4 bytes).
+#[derive(Clone, Copy)]
+#[repr(C)]
+union LinkOrWeight {
     /// Link value containing base (low 8 bits) and extra (high 24 bits).
-    Link(u32),
+    link: u32,
     /// Weight value for sorting.
-    Weight(f32),
+    weight: f32,
 }
 
 impl Default for LinkOrWeight {
     fn default() -> Self {
-        LinkOrWeight::Weight(f32::MIN)
+        // Initialize to link=0 instead of weight=f32::MIN
+        // This ensures predictable behavior when switching between link and weight
+        LinkOrWeight { link: 0 }
+    }
+}
+
+// Debug implementation for union
+impl std::fmt::Debug for LinkOrWeight {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // We don't know which variant is active, so just show the raw bits
+        unsafe { write!(f, "LinkOrWeight(link={}, weight={})", self.link, self.weight) }
     }
 }
 
@@ -82,11 +95,10 @@ impl Cache {
     /// * `base` - Base byte value
     #[inline]
     pub fn set_base(&mut self, base: u8) {
-        let current_link = match self.union {
-            LinkOrWeight::Link(link) => link,
-            _ => 0,
-        };
-        self.union = LinkOrWeight::Link((current_link & !0xFF) | (base as u32));
+        unsafe {
+            let current_link = self.union.link;
+            self.union.link = (current_link & !0xFF) | (base as u32);
+        }
     }
 
     /// Sets the extra data (high 24 bits of link).
@@ -101,11 +113,10 @@ impl Cache {
     #[inline]
     pub fn set_extra(&mut self, extra: usize) {
         assert!(extra <= (u32::MAX >> 8) as usize, "Extra too large");
-        let current_link = match self.union {
-            LinkOrWeight::Link(link) => link,
-            _ => 0,
-        };
-        self.union = LinkOrWeight::Link((current_link & 0xFF) | ((extra as u32) << 8));
+        unsafe {
+            let current_link = self.union.link;
+            self.union.link = (current_link & 0xFF) | ((extra as u32) << 8);
+        }
     }
 
     /// Sets the weight.
@@ -115,7 +126,7 @@ impl Cache {
     /// * `weight` - Weight value
     #[inline]
     pub fn set_weight(&mut self, weight: f32) {
-        self.union = LinkOrWeight::Weight(weight);
+        self.union.weight = weight;
     }
 
     /// Returns the parent node index.
@@ -131,65 +142,33 @@ impl Cache {
     }
 
     /// Returns the base byte.
-    ///
-    /// # Panics
-    ///
-    /// Panics if weight was set instead of link
     #[inline]
     pub fn base(&self) -> u8 {
-        match self.union {
-            LinkOrWeight::Link(link) => (link & 0xFF) as u8,
-            _ => panic!("Link not set"),
-        }
+        unsafe { (self.union.link & 0xFF) as u8 }
     }
 
     /// Returns the extra data.
-    ///
-    /// # Panics
-    ///
-    /// Panics if weight was set instead of link
     #[inline]
     pub fn extra(&self) -> usize {
-        match self.union {
-            LinkOrWeight::Link(link) => (link >> 8) as usize,
-            _ => panic!("Link not set"),
-        }
+        unsafe { (self.union.link >> 8) as usize }
     }
 
     /// Returns the label (same as base, cast to char).
-    ///
-    /// # Panics
-    ///
-    /// Panics if weight was set instead of link
     #[inline]
     pub fn label(&self) -> u8 {
         self.base()
     }
 
     /// Returns the full link value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if weight was set instead of link
     #[inline]
     pub fn link(&self) -> usize {
-        match self.union {
-            LinkOrWeight::Link(link) => link as usize,
-            _ => panic!("Link not set"),
-        }
+        unsafe { self.union.link as usize }
     }
 
     /// Returns the weight.
-    ///
-    /// # Panics
-    ///
-    /// Panics if link was set instead of weight
     #[inline]
     pub fn weight(&self) -> f32 {
-        match self.union {
-            LinkOrWeight::Weight(w) => w,
-            _ => panic!("Weight not set"),
-        }
+        unsafe { self.union.weight }
     }
 }
 
