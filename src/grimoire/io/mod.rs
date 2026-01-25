@@ -10,3 +10,7 @@
 pub mod mapper;
 pub mod reader;
 pub mod writer;
+
+pub use mapper::Mapper;
+pub use reader::Reader;
+pub use writer::Writer;
