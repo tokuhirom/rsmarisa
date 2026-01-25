@@ -71,7 +71,7 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 | C++ File | Rust Module | Status | Notes |
 |----------|-------------|--------|-------|
-| lib/marisa/grimoire/algorithm/sort.h | src/grimoire/algorithm/sort.rs | 🚧 | Basic stub |
+| lib/marisa/grimoire/algorithm/sort.h | src/grimoire/algorithm/sort.rs | ✅ | Completed with tests |
 
 ### Grimoire - Other (lib/marisa/grimoire/)
 
@@ -108,11 +108,11 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 ## Progress Summary
 
 - **Total files to port**: ~50+
-- **Completed**: 13 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector, Header, Config, Range, Key, Cache, History, Entry, State)
-- **In progress**: ~22 (others structure only)
+- **Completed**: 14 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector, Header, Config, Range, Key, Cache, History, Entry, State, Sort)
+- **In progress**: ~21 (others structure only)
 - **Pending**: ~25+
-- **Tests passing**: 160 tests
-- **Lines of code**: ~5,800 lines
+- **Tests passing**: 175 tests
+- **Lines of code**: ~6,300 lines
 
 ## Recent Achievements
 
