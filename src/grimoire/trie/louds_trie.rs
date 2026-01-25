@@ -190,6 +190,230 @@ impl LoudsTrie {
             link_id + 1
         }
     }
+
+    /// Restores a key from a link.
+    ///
+    /// Delegates to either next trie or tail storage.
+    #[inline]
+    fn restore(&self, agent: &mut crate::agent::Agent, link: usize) {
+        if let Some(ref next) = self.next_trie {
+            next.restore_(agent, link);
+        } else {
+            self.tail.restore(agent, link);
+        }
+    }
+
+    /// Matches query against a link.
+    ///
+    /// Delegates to either next trie or tail storage.
+    #[inline]
+    fn match_link(&self, agent: &mut crate::agent::Agent, link: usize) -> bool {
+        if let Some(ref next) = self.next_trie {
+            next.match_(agent, link)
+        } else {
+            self.tail.match_tail(agent, link)
+        }
+    }
+
+    /// Matches query prefix and restores the rest from a link.
+    ///
+    /// Delegates to either next trie or tail storage.
+    #[inline]
+    fn prefix_match(&self, agent: &mut crate::agent::Agent, link: usize) -> bool {
+        if let Some(ref next) = self.next_trie {
+            next.prefix_match_(agent, link)
+        } else {
+            self.tail.prefix_match(agent, link)
+        }
+    }
+
+    /// Internal restore implementation for recursive calls.
+    fn restore_(&self, agent: &mut crate::agent::Agent, node_id: usize) {
+        assert!(node_id != 0, "Node ID must not be 0");
+
+        let mut node_id = node_id;
+
+        loop {
+            let cache_id = self.get_cache_id(node_id);
+            if node_id == self.cache[cache_id].child() {
+                use crate::base::INVALID_EXTRA;
+                if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
+                    self.restore(agent, self.cache[cache_id].link());
+                } else {
+                    agent
+                        .state_mut()
+                        .expect("Agent must have state")
+                        .key_buf_mut()
+                        .push(self.cache[cache_id].label());
+                }
+
+                node_id = self.cache[cache_id].parent();
+                if node_id == 0 {
+                    return;
+                }
+                continue;
+            }
+
+            if self.link_flags.get(node_id) {
+                self.restore(agent, self.get_link_simple(node_id));
+            } else {
+                agent
+                    .state_mut()
+                    .expect("Agent must have state")
+                    .key_buf_mut()
+                    .push(self.bases[node_id]);
+            }
+
+            if node_id <= self.num_l1_nodes {
+                return;
+            }
+            node_id = self.louds.select1(node_id) - node_id - 1;
+        }
+    }
+
+    /// Internal match implementation for recursive calls.
+    fn match_(&self, agent: &mut crate::agent::Agent, node_id: usize) -> bool {
+        let query_len = agent.query().length();
+        let mut query_pos = agent
+            .state()
+            .expect("Agent must have state")
+            .query_pos();
+
+        assert!(query_pos < query_len, "Query position out of bounds");
+        assert!(node_id != 0, "Node ID must not be 0");
+
+        let query_bytes = agent.query().as_bytes().to_vec();
+        let mut node_id = node_id;
+
+        loop {
+            let cache_id = self.get_cache_id(node_id);
+            if node_id == self.cache[cache_id].child() {
+                use crate::base::INVALID_EXTRA;
+                if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
+                    if !self.match_link(agent, self.cache[cache_id].link()) {
+                        return false;
+                    }
+                } else if self.cache[cache_id].label() == query_bytes[query_pos] {
+                    query_pos += 1;
+                    agent
+                        .state_mut()
+                        .expect("Agent must have state")
+                        .set_query_pos(query_pos);
+                } else {
+                    return false;
+                }
+
+                node_id = self.cache[cache_id].parent();
+                if node_id == 0 {
+                    return true;
+                }
+                if query_pos >= query_len {
+                    return false;
+                }
+                continue;
+            }
+
+            if self.link_flags.get(node_id) {
+                if let Some(ref next) = self.next_trie {
+                    if !self.match_link(agent, self.get_link_simple(node_id)) {
+                        return false;
+                    }
+                } else if !self.tail.match_tail(agent, self.get_link_simple(node_id)) {
+                    return false;
+                }
+            } else if self.bases[node_id] == query_bytes[query_pos] {
+                query_pos += 1;
+                agent
+                    .state_mut()
+                    .expect("Agent must have state")
+                    .set_query_pos(query_pos);
+            } else {
+                return false;
+            }
+
+            if node_id <= self.num_l1_nodes {
+                return true;
+            }
+            if query_pos >= query_len {
+                return false;
+            }
+            node_id = self.louds.select1(node_id) - node_id - 1;
+        }
+    }
+
+    /// Internal prefix match implementation for recursive calls.
+    fn prefix_match_(&self, agent: &mut crate::agent::Agent, node_id: usize) -> bool {
+        let query_len = agent.query().length();
+        let mut query_pos = agent
+            .state()
+            .expect("Agent must have state")
+            .query_pos();
+
+        assert!(query_pos < query_len, "Query position out of bounds");
+        assert!(node_id != 0, "Node ID must not be 0");
+
+        let query_bytes = agent.query().as_bytes().to_vec();
+        let mut node_id = node_id;
+
+        loop {
+            let cache_id = self.get_cache_id(node_id);
+            if node_id == self.cache[cache_id].child() {
+                use crate::base::INVALID_EXTRA;
+                if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
+                    if !self.prefix_match(agent, self.cache[cache_id].link()) {
+                        return false;
+                    }
+                } else if self.cache[cache_id].label() == query_bytes[query_pos] {
+                    agent
+                        .state_mut()
+                        .expect("Agent must have state")
+                        .key_buf_mut()
+                        .push(self.cache[cache_id].label());
+                    query_pos += 1;
+                    agent
+                        .state_mut()
+                        .expect("Agent must have state")
+                        .set_query_pos(query_pos);
+                } else {
+                    return false;
+                }
+
+                node_id = self.cache[cache_id].parent();
+                if node_id == 0 {
+                    return true;
+                }
+            } else {
+                if self.link_flags.get(node_id) {
+                    if !self.prefix_match(agent, self.get_link_simple(node_id)) {
+                        return false;
+                    }
+                } else if self.bases[node_id] == query_bytes[query_pos] {
+                    agent
+                        .state_mut()
+                        .expect("Agent must have state")
+                        .key_buf_mut()
+                        .push(self.bases[node_id]);
+                    query_pos += 1;
+                    agent
+                        .state_mut()
+                        .expect("Agent must have state")
+                        .set_query_pos(query_pos);
+                } else {
+                    return false;
+                }
+
+                if node_id <= self.num_l1_nodes {
+                    return true;
+                }
+                node_id = self.louds.select1(node_id) - node_id - 1;
+            }
+
+            if query_pos >= query_len {
+                self.restore_(agent, node_id);
+                return true;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
