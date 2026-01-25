@@ -46,7 +46,7 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 | C++ File | Rust Module | Status | Notes |
 |----------|-------------|--------|-------|
-| lib/marisa/grimoire/trie/louds-trie.{h,cc} | src/grimoire/trie/louds_trie.rs | 🚧 | Stub only |
+| lib/marisa/grimoire/trie/louds-trie.{h,cc} | src/grimoire/trie/louds_trie.rs | 🚧 | Structure and helpers complete, build/search pending |
 | lib/marisa/grimoire/trie/tail.{h,cc} | src/grimoire/trie/tail.rs | ✅ | Basic structure with tests |
 | lib/marisa/grimoire/trie/cache.h | src/grimoire/trie/cache.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/trie/config.h | src/grimoire/trie/config.rs | ✅ | Completed with tests |
@@ -108,14 +108,16 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 ## Progress Summary
 
 - **Total files to port**: ~50+
-- **Completed**: 22 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector, Header, Config, Range, Key, Cache, History, Entry, State, Sort, Reader, Writer, Tail, Mapper, Query, public Key, Keyset, Agent)
+- **Completed**: 22 modules fully complete
+- **In progress**: 1 (LoudsTrie - structure and helpers done, build/search pending)
 - **In progress**: ~18 (others structure only)
 - **Pending**: ~25+
-- **Tests passing**: 283 tests
+- **Tests passing**: 284 tests
 - **Lines of code**: ~7,200 lines
 
 ## Recent Achievements
 
+- 🚧 LoudsTrie: Core trie structure with helpers (build/search operations pending)
 - ✅ Agent: Search agent with Query, Key, and State management
 - ✅ Keyset: Block-based key collection for trie construction
 - ✅ Key (public API): Dictionary key type with ID/weight union
