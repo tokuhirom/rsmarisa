@@ -148,8 +148,8 @@ impl Config {
 
         self.tail_mode = match tail_mode_bits {
             0 => TailMode::default(),
-            x if x == TailMode::Text as i32 => TailMode::Text,
-            x if x == TailMode::Binary as i32 => TailMode::Binary,
+            x if x == TailMode::TextTail as i32 => TailMode::TextTail,
+            x if x == TailMode::BinaryTail as i32 => TailMode::BinaryTail,
             _ => panic!("Undefined tail mode"),
         };
     }
@@ -212,11 +212,11 @@ mod tests {
     #[test]
     fn test_config_parse_tail_mode() {
         let mut config = Config::new();
-        config.parse(TailMode::Text as i32);
-        assert_eq!(config.tail_mode() as i32, TailMode::Text as i32);
+        config.parse(TailMode::TextTail as i32);
+        assert_eq!(config.tail_mode() as i32, TailMode::TextTail as i32);
 
-        config.parse(TailMode::Binary as i32);
-        assert_eq!(config.tail_mode() as i32, TailMode::Binary as i32);
+        config.parse(TailMode::BinaryTail as i32);
+        assert_eq!(config.tail_mode() as i32, TailMode::BinaryTail as i32);
     }
 
     #[test]
@@ -232,23 +232,23 @@ mod tests {
     #[test]
     fn test_config_parse_combined() {
         let mut config = Config::new();
-        let flags = 5 | (CacheLevel::Large as i32) | (TailMode::Binary as i32) | (NodeOrder::Weight as i32);
+        let flags = 5 | (CacheLevel::Large as i32) | (TailMode::BinaryTail as i32) | (NodeOrder::Weight as i32);
         config.parse(flags);
 
         assert_eq!(config.num_tries(), 5);
         assert_eq!(config.cache_level() as i32, CacheLevel::Large as i32);
-        assert_eq!(config.tail_mode() as i32, TailMode::Binary as i32);
+        assert_eq!(config.tail_mode() as i32, TailMode::BinaryTail as i32);
         assert_eq!(config.node_order() as i32, NodeOrder::Weight as i32);
     }
 
     #[test]
     fn test_config_flags() {
         let mut config = Config::new();
-        config.parse(5 | (TailMode::Text as i32) | (NodeOrder::Label as i32));
+        config.parse(5 | (TailMode::TextTail as i32) | (NodeOrder::Label as i32));
 
         let flags = config.flags();
         assert_eq!(flags & masks::NUM_TRIES_MASK, 5);
-        assert_eq!(flags & masks::TAIL_MODE_MASK, TailMode::Text as i32);
+        assert_eq!(flags & masks::TAIL_MODE_MASK, TailMode::TextTail as i32);
         assert_eq!(flags & masks::NODE_ORDER_MASK, NodeOrder::Label as i32);
     }
 

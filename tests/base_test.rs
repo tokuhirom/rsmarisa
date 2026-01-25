@@ -38,7 +38,7 @@ fn test_error_code() {
 #[test]
 fn test_default_config_values() {
     assert_eq!(CacheLevel::default(), CacheLevel::Normal);
-    assert_eq!(TailMode::default(), TailMode::Text);
+    assert_eq!(TailMode::default(), TailMode::TextTail);
     assert_eq!(NodeOrder::default(), NodeOrder::Weight);
 }
 

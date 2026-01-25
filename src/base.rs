@@ -20,6 +20,29 @@ pub const INVALID_LINK_ID: u32 = u32::MAX;
 /// Invalid key ID constant.
 pub const INVALID_KEY_ID: u32 = u32::MAX;
 
+/// Tail mode for suffix storage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum TailMode {
+    /// Text mode: merges suffixes as NULL-terminated strings.
+    ///
+    /// Available only if suffixes don't contain NULL characters.
+    /// Automatically switches to Binary mode if NULL is detected.
+    TextTail = 0x01000,
+
+    /// Binary mode: merges suffixes as byte sequences.
+    ///
+    /// Uses a bit vector to detect end of sequences instead of NULL.
+    /// Requires more space if average suffix length > 8 bytes.
+    BinaryTail = 0x02000,
+}
+
+impl Default for TailMode {
+    fn default() -> Self {
+        TailMode::TextTail
+    }
+}
+
 /// Invalid extra value constant (UINT32_MAX >> 8).
 pub const INVALID_EXTRA: u32 = u32::MAX >> 8;
 
@@ -134,30 +157,6 @@ impl Default for CacheLevel {
     }
 }
 
-/// TAIL implementation modes.
-///
-/// Ported from: marisa_tail_mode enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TailMode {
-    /// Merges last labels as zero-terminated strings.
-    ///
-    /// Available only if last labels don't contain NULL characters.
-    /// Automatically switches to Binary if NULL is detected.
-    Text = 0x01000,
-
-    /// Merges last labels as byte sequences.
-    ///
-    /// Uses a bit vector to detect sequence end. Requires more space
-    /// if average label length is greater than 8.
-    Binary = 0x02000,
-}
-
-impl Default for TailMode {
-    fn default() -> Self {
-        TailMode::Text
-    }
-}
 
 /// Node arrangement order.
 ///
@@ -223,7 +222,7 @@ mod tests {
     #[test]
     fn test_default_values() {
         assert_eq!(CacheLevel::default(), CacheLevel::Normal);
-        assert_eq!(TailMode::default(), TailMode::Text);
+        assert_eq!(TailMode::default(), TailMode::TextTail);
         assert_eq!(NodeOrder::default(), NodeOrder::Weight);
     }
 }
