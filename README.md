@@ -34,7 +34,7 @@ A MARISA-based dictionary supports:
 
 ### Testing
 
-- 91 comprehensive tests covering all implemented functionality
+- 105 comprehensive tests covering all implemented functionality
 - All tests passing ✅
 - Platform-specific tests for 32-bit and 64-bit systems
 
