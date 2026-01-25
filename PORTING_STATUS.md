@@ -62,7 +62,7 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 | C++ File | Rust Module | Status | Notes |
 |----------|-------------|--------|-------|
 | lib/marisa/grimoire/vector/bit-vector.{h,cc} | src/grimoire/vector/bit_vector.rs | ✅ | Completed with tests |
-| lib/marisa/grimoire/vector/flat-vector.h | src/grimoire/vector/flat_vector.rs | 🚧 | Stub only |
+| lib/marisa/grimoire/vector/flat-vector.h | src/grimoire/vector/flat_vector.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/vector/vector.h | src/grimoire/vector/vector.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/vector/pop-count.h | src/grimoire/vector/pop_count.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/vector/rank-index.h | src/grimoire/vector/rank_index.rs | ✅ | Completed with tests |
@@ -108,14 +108,15 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 ## Progress Summary
 
 - **Total files to port**: ~50+
-- **Completed**: 4 (Vector<T>, pop_count, RankIndex, BitVector)
+- **Completed**: 5 (Vector<T>, pop_count, RankIndex, BitVector, FlatVector)
 - **In progress**: ~25 (others structure only)
 - **Pending**: ~25+
-- **Tests passing**: 44 tests
-- **Lines of code**: ~2,600 lines
+- **Tests passing**: 54 tests
+- **Lines of code**: ~3,000 lines
 
 ## Recent Achievements
 
+- ✅ FlatVector: Space-efficient integer storage with automatic bit-packing
 - ✅ BitVector complete: basic operations, rank, and select
 - ✅ BitVector select operations (select0, select1) with O(log n) complexity
 - ✅ select_bit helper functions for 64-bit and 32-bit platforms

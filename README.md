@@ -28,10 +28,13 @@ A MARISA-based dictionary supports:
   - Rank operations: `rank0()`, `rank1()` with O(1) complexity
   - Select operations: `select0()`, `select1()` with O(log n) complexity
   - Index building: `build()` with rank and select index construction
+- ✅ **FlatVector**: Space-efficient integer vector with bit-packing
+  - Automatically uses minimum bits based on maximum value
+  - Example: 0-15 range uses 4 bits per value instead of 32
 
 ### Testing
 
-- 44 comprehensive tests covering all implemented functionality
+- 54 comprehensive tests covering all implemented functionality
 - All tests passing ✅
 - Platform-specific tests for 32-bit and 64-bit systems
 
