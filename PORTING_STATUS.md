@@ -46,7 +46,7 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 | C++ File | Rust Module | Status | Notes |
 |----------|-------------|--------|-------|
-| lib/marisa/grimoire/trie/louds-trie.{h,cc} | src/grimoire/trie/louds_trie.rs | 🚧 | Structure and helpers complete, build/search pending |
+| lib/marisa/grimoire/trie/louds-trie.{h,cc} | src/grimoire/trie/louds_trie.rs | 🚧 | Search operations complete, build() pending |
 | lib/marisa/grimoire/trie/tail.{h,cc} | src/grimoire/trie/tail.rs | ✅ | Basic structure with tests |
 | lib/marisa/grimoire/trie/cache.h | src/grimoire/trie/cache.rs | ✅ | Completed with tests |
 | lib/marisa/grimoire/trie/config.h | src/grimoire/trie/config.rs | ✅ | Completed with tests |
@@ -117,7 +117,10 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 ## Recent Achievements
 
-- 🚧 LoudsTrie: Core trie structure with helpers (build/search operations pending)
+- 🚧 LoudsTrie: Search operations complete (lookup, reverse_lookup, common_prefix_search, predictive_search)
+  - All 4 main search methods implemented
+  - Helper methods: find_child, predictive_find_child, restore, match, prefix_match
+  - Only build() method remaining (~300 lines in C++)
 - ✅ Agent: Search agent with Query, Key, and State management
 - ✅ Keyset: Block-based key collection for trie construction
 - ✅ Key (public API): Dictionary key type with ID/weight union
