@@ -1,0 +1,37 @@
+# rust-marisa
+
+Rust port of [marisa-trie](https://github.com/s-yata/marisa-trie), a static and space-efficient trie data structure.
+
+## About
+
+MARISA (Matching Algorithm with Recursively Implemented StorAge) is a static and space-efficient trie data structure. This Rust implementation aims to maintain compatibility with the original C++ implementation while leveraging Rust's safety features.
+
+## Features
+
+A MARISA-based dictionary supports:
+- **Lookup**: Check whether a given string exists in the dictionary
+- **Reverse lookup**: Restore a key from its ID
+- **Common prefix search**: Find keys from prefixes of a given string
+- **Predictive search**: Find keys starting with a given string
+
+## Status
+
+🚧 **Work in Progress** - This is an early-stage port. The structure is being set up to mirror the original implementation.
+
+## Original Project
+
+- Original repository: https://github.com/s-yata/marisa-trie
+- Original author: Susumu Yata
+- Baseline version: 0.3.1
+- Baseline commit: `4ef33cc5a2b6b4f5e147e4564a5236e163d67982`
+
+## License
+
+BSD-2-Clause (same as the original project)
+
+See [LICENSE](LICENSE) for details.
+
+## Contributing
+
+See [CLAUDE.md](CLAUDE.md) for porting guidelines and project structure.
+

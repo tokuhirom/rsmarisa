@@ -1,0 +1,24 @@
+[package]
+name = "marisa"
+version = "0.1.0"
+edition = "2021"
+authors = ["rust-marisa contributors"]
+license = "BSD-2-Clause"
+description = "Rust port of marisa-trie: a static and space-efficient trie data structure"
+repository = "https://github.com/tokuhirom/rust-marisa"
+keywords = ["trie", "data-structure", "marisa", "search"]
+categories = ["data-structures", "algorithms"]
+rust-version = "1.70"
+
+[dependencies]
+
+[dev-dependencies]
+
+[lib]
+name = "marisa"
+path = "src/lib.rs"
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+required-features = []
