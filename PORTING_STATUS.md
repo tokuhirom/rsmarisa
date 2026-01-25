@@ -61,11 +61,11 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 
 | C++ File | Rust Module | Status | Notes |
 |----------|-------------|--------|-------|
-| lib/marisa/grimoire/vector/bit-vector.{h,cc} | src/grimoire/vector/bit_vector.rs | 🚧 | Stub only |
+| lib/marisa/grimoire/vector/bit-vector.{h,cc} | src/grimoire/vector/bit_vector.rs | 🚧 | Basic ops (push_back, get). TODO: rank/select |
 | lib/marisa/grimoire/vector/flat-vector.h | src/grimoire/vector/flat_vector.rs | 🚧 | Stub only |
-| lib/marisa/grimoire/vector/vector.h | src/grimoire/vector/vector.rs | 🚧 | Stub only |
-| lib/marisa/grimoire/vector/pop-count.h | src/grimoire/vector/pop_count.rs | 🚧 | Basic implementation |
-| lib/marisa/grimoire/vector/rank-index.h | src/grimoire/vector/rank_index.rs | 🚧 | Stub only |
+| lib/marisa/grimoire/vector/vector.h | src/grimoire/vector/vector.rs | ✅ | Completed with tests |
+| lib/marisa/grimoire/vector/pop-count.h | src/grimoire/vector/pop_count.rs | ✅ | Completed with tests |
+| lib/marisa/grimoire/vector/rank-index.h | src/grimoire/vector/rank_index.rs | ✅ | Completed with tests |
 
 ### Grimoire - Algorithm (lib/marisa/grimoire/algorithm/)
 
@@ -108,9 +108,10 @@ This document tracks the porting progress from marisa-trie C++ to Rust.
 ## Progress Summary
 
 - **Total files to port**: ~50+
-- **Completed**: 0
-- **In progress**: ~25 (structure only)
+- **Completed**: 3 (Vector<T>, pop_count, RankIndex)
+- **In progress**: ~25 (BitVector partial, others structure only)
 - **Pending**: ~25+
+- **Tests passing**: 25 tests
 
 ## Next Steps
 
