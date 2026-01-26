@@ -67,3 +67,7 @@ path = "src/bin/rsmarisa-predictive-search.rs"
 name = "rsmarisa-reverse-lookup"
 path = "src/bin/rsmarisa-reverse-lookup.rs"
 
+# Development/testing binary (not published due to exclude pattern)
+[[bin]]
+name = "binary_compatibility_test"
+path = "bin/binary_compatibility_test.rs"
