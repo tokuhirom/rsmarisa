@@ -98,6 +98,10 @@ path = "bin/debug_sort_order.rs"
 name = "test_string_comparer"
 path = "bin/test_string_comparer.rs"
 
+[[bin]]
+name = "test_reverse_lookup"
+path = "bin/test_reverse_lookup.rs"
+
 # CLI Tools
 [[bin]]
 name = "rsmarisa-build"

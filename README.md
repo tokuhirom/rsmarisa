@@ -91,12 +91,10 @@ cargo run --example save_load
 
 ## Status
 
-✅ **Production ready!** Core functionality is complete with full binary compatibility.
-
-⚠️ **Known Issues:**
-- `reverse_lookup()` and `predictive_search()` have bugs that need debugging
+✅ **Production ready!** Core functionality is complete with full binary compatibility and all CLI tools working.
 
 ✅ **Recently Fixed (2026-01-26):**
+- **reverse_lookup() and predictive_search() use-after-free bugs**: Fixed memory safety issues where keys were set using dangling pointers to freed temporary buffers. Now properly uses `set_key_from_state_buf()` to point to the agent's state buffer.
 - **7+ keys lookup bug**: Fixed ReverseKey substring extraction in tail building that caused lookup failures for tries with 7 or more keys. The bug was in `build_current_trie_reverse()` where reverse indices were incorrectly used to slice forward bytes.
 - **Tail sort order**: Corrected entry sorting to use ascending order (matching C++ behavior)
 - **Binary compatibility**: Rust-built tries are now byte-for-byte identical to C++-built tries
@@ -143,12 +141,14 @@ Command-line tools with `rsmarisa-` prefix (to avoid conflicts with C++ marisa-t
 - ✅ `rsmarisa-build` - Build a dictionary from text input (binary compatible with C++)
 - ✅ `rsmarisa-lookup` - Look up keys in a dictionary (results match C++ exactly)
 - ✅ `rsmarisa-common-prefix-search` - Find keys that are prefixes of queries (results match C++ exactly)
-- ⚠️ `rsmarisa-dump` - Dump dictionary contents (has issues due to predictive_search bugs)
-- ⚠️ `rsmarisa-predictive-search` - Find keys with a given prefix (has issues due to predictive_search bugs)
-- ⚠️ `rsmarisa-reverse-lookup` - Restore keys from IDs (has issues due to reverse_lookup bugs)
+- ✅ `rsmarisa-dump` - Dump dictionary contents (results match C++ exactly)
+- ✅ `rsmarisa-predictive-search` - Find keys with a given prefix (results match C++ exactly)
+- ✅ `rsmarisa-reverse-lookup` - Restore keys from IDs (results match C++ exactly)
 
 **Coming Soon:**
 - `rsmarisa-benchmark` - Performance benchmarking
+
+All CLI tools are now fully functional and produce output identical to their C++ counterparts.
 
 ### Usage Examples
 

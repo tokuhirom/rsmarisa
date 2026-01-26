@@ -1057,12 +1057,7 @@ impl LoudsTrie {
 
         // Handle root node case
         if node_id == 0 {
-            let key_bytes = agent
-                .state()
-                .expect("Agent must have state")
-                .key_buf()
-                .to_vec();
-            agent.set_key_bytes(&key_bytes);
+            agent.set_key_from_state_buf();
             agent.set_key_id(key_id);
             return;
         }
@@ -1096,11 +1091,9 @@ impl LoudsTrie {
                 // Reverse entire key buffer
                 let state = agent.state_mut().expect("Agent must have state");
                 state.key_buf_mut().reverse();
-
-                let key_bytes = state.key_buf().to_vec();
                 drop(state);
 
-                agent.set_key_bytes(&key_bytes);
+                agent.set_key_from_state_buf();
                 agent.set_key_id(key_id);
                 return;
             }
@@ -1330,10 +1323,9 @@ impl LoudsTrie {
                 // Check if current node is terminal
                 let node_id = state.node_id();
                 if self.terminal_flags.get(node_id) {
-                    let key_bytes = state.key_buf().to_vec();
                     drop(state);
 
-                    agent.set_key_bytes(&key_bytes);
+                    agent.set_key_from_state_buf();
                     let key_id = self.terminal_flags.rank1(node_id);
                     agent.set_key_id(key_id);
                     return true;
@@ -1415,10 +1407,9 @@ impl LoudsTrie {
                         id
                     };
 
-                    let key_bytes = state.key_buf().to_vec();
                     drop(state);
 
-                    agent.set_key_bytes(&key_bytes);
+                    agent.set_key_from_state_buf();
                     agent.set_key_id(key_id);
                     return true;
                 }

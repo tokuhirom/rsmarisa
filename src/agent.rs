@@ -140,6 +140,22 @@ impl Agent {
         self.key.set_id(id);
     }
 
+    /// Sets the key to point to the state's key buffer.
+    ///
+    /// This is used after operations like reverse_lookup that build
+    /// the key in the state's buffer.
+    pub fn set_key_from_state_buf(&mut self) {
+        if let Some(ref state) = self.state {
+            let buf = state.key_buf();
+            // Set key to point to state's buffer
+            // SAFETY: The buffer is owned by state which is owned by self,
+            // so it will live as long as self lives.
+            self.key.set_bytes(buf);
+        } else {
+            panic!("Agent must have state to set key from state buffer");
+        }
+    }
+
     /// Sets the key to point to the query buffer.
     ///
     /// This is used after a successful lookup to set the result key
