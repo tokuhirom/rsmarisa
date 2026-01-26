@@ -11,6 +11,7 @@ categories = ["data-structures", "algorithms"]
 rust-version = "1.70"
 
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3.0"
@@ -97,5 +98,16 @@ path = "bin/debug_sort_order.rs"
 name = "test_string_comparer"
 path = "bin/test_string_comparer.rs"
 
+# CLI Tools
+[[bin]]
+name = "rsmarisa-build"
+path = "src/bin/rsmarisa-build.rs"
 
+[[bin]]
+name = "rsmarisa-lookup"
+path = "src/bin/rsmarisa-lookup.rs"
+
+[[bin]]
+name = "rsmarisa-dump"
+path = "src/bin/rsmarisa-dump.rs"
 
