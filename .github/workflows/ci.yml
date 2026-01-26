@@ -33,6 +33,27 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install C++ marisa-trie tools (for CLI compatibility tests)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+          git clone https://github.com/s-yata/marisa-trie.git /tmp/marisa-trie
+          cd /tmp/marisa-trie
+          git checkout 4ef33cc5a2b6b4f5e147e4564a5236e163d67982
+          mkdir -p build && cd build
+          cmake ..
+          make
+          sudo cp tools/marisa-build /usr/local/bin/
+          sudo cp tools/marisa-lookup /usr/local/bin/
+          sudo cp tools/marisa-reverse-lookup /usr/local/bin/
+          sudo cp tools/marisa-common-prefix-search /usr/local/bin/
+          sudo cp tools/marisa-predictive-search /usr/local/bin/
+          sudo cp lib/libmarisa.a /usr/local/lib/
+          sudo ldconfig
+
+      - name: Build release binaries (for CLI tool tests)
+        run: cargo build --release --bins
+
       - name: Run tests
         run: cargo test --verbose
 
@@ -114,8 +135,8 @@ jobs:
       - name: Build C++ test binary
         run: |
           cd /tmp/marisa-trie/build
-          g++ -o /tmp/cpp_test ${{ github.workspace }}/tests/cpp_binary_test.cc -I/usr/local/include -L/usr/local/lib -lmarisa -std=c++17
-          /tmp/cpp_test /tmp/cpp_output.marisa
+          g++ -o /tmp/cpp_test ${{ github.workspace }}/tests/cpp_binary_test.cc -I../include -L./lib -lmarisa -std=c++17
+          LD_LIBRARY_PATH=/tmp/marisa-trie/build/lib /tmp/cpp_test /tmp/cpp_output.marisa
 
       - name: Build Rust test binary
         run: |
