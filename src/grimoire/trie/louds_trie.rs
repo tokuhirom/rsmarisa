@@ -354,7 +354,10 @@ impl LoudsTrie {
             let mut group_start = range.begin();
 
             for i in (range.begin() + 1)..range.end() {
-                if keys[i - 1].get(range.key_pos()) != keys[i].get(range.key_pos()) {
+                if range.key_pos() >= keys[i - 1].length()
+                    || range.key_pos() >= keys[i].length()
+                    || keys[i - 1].get(range.key_pos()) != keys[i].get(range.key_pos())
+                {
                     w_ranges.push(make_weighted_range(
                         group_start,
                         i,
@@ -390,7 +393,10 @@ impl LoudsTrie {
                 while key_pos < keys[w_range.begin()].length() {
                     let mut all_same = true;
                     for j in (w_range.begin() + 1)..w_range.end() {
-                        if keys[j - 1].get(key_pos) != keys[j].get(key_pos) {
+                        if key_pos >= keys[j - 1].length()
+                            || key_pos >= keys[j].length()
+                            || keys[j - 1].get(key_pos) != keys[j].get(key_pos)
+                        {
                             all_same = false;
                             break;
                         }
@@ -612,7 +618,10 @@ impl LoudsTrie {
             let mut group_start = range.begin();
 
             for i in (range.begin() + 1)..range.end() {
-                if keys[i - 1].get(range.key_pos()) != keys[i].get(range.key_pos()) {
+                if range.key_pos() >= keys[i - 1].length()
+                    || range.key_pos() >= keys[i].length()
+                    || keys[i - 1].get(range.key_pos()) != keys[i].get(range.key_pos())
+                {
                     w_ranges.push(make_weighted_range(
                         group_start,
                         i,
@@ -648,7 +657,10 @@ impl LoudsTrie {
                 while key_pos < keys[w_range.begin()].length() {
                     let mut all_same = true;
                     for j in (w_range.begin() + 1)..w_range.end() {
-                        if keys[j - 1].get(key_pos) != keys[j].get(key_pos) {
+                        if key_pos >= keys[j - 1].length()
+                            || key_pos >= keys[j].length()
+                            || keys[j - 1].get(key_pos) != keys[j].get(key_pos)
+                        {
                             all_same = false;
                             break;
                         }
