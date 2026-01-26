@@ -138,6 +138,46 @@ impl FlatVector {
         std::mem::swap(&mut self.size, &mut other.size);
     }
 
+    /// Maps the flat vector from a mapper.
+    ///
+    /// Format (matching C++ marisa-trie):
+    /// - units: `Vector<u64>`
+    /// - value_size: u32 (must be <= 32)
+    /// - mask: u32
+    /// - size: u64
+    ///
+    /// # Arguments
+    ///
+    /// * `mapper` - Mapper to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if mapping fails or if value_size > 32.
+    pub fn map(&mut self, mapper: &mut crate::grimoire::io::Mapper) -> std::io::Result<()> {
+        // Map units
+        self.units.map(mapper)?;
+
+        // Map value_size and validate
+        let temp_value_size: u32 = mapper.map_value()?;
+        if temp_value_size > 32 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "value_size exceeds 32",
+            ));
+        }
+        self.value_size = temp_value_size as usize;
+
+        // Map mask
+        let temp_mask: u32 = mapper.map_value()?;
+        self.mask = temp_mask;
+
+        // Map size
+        let temp_size: u64 = mapper.map_value()?;
+        self.size = temp_size as usize;
+
+        Ok(())
+    }
+
     /// Reads the flat vector from a reader.
     ///
     /// Format (matching C++ marisa-trie):

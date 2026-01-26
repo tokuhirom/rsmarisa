@@ -226,6 +226,25 @@ impl Tail {
         offsets.swap(&mut temp_offsets);
     }
 
+    /// Maps tail from a mapper.
+    ///
+    /// Format:
+    /// - buf: `Vector<u8>` (suffix buffer)
+    /// - end_flags: BitVector (end markers for binary mode)
+    ///
+    /// # Arguments
+    ///
+    /// * `mapper` - Mapper to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if mapping fails.
+    pub fn map(&mut self, mapper: &mut crate::grimoire::io::Mapper) -> io::Result<()> {
+        self.buf.map(mapper)?;
+        self.end_flags.map(mapper)?;
+        Ok(())
+    }
+
     /// Reads tail from a reader.
     ///
     /// Format:

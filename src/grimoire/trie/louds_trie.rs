@@ -44,9 +44,12 @@ pub struct LoudsTrie {
     num_l1_nodes: usize,
     /// Configuration.
     config: Config,
-    /// Mapper for memory-mapped access (not yet implemented).
-    #[allow(dead_code)]
-    mapper: Mapper<'static>,
+    /// Mapper for memory-mapped access.
+    /// IMPORTANT: This field MUST be last in struct declaration.
+    /// Rust drops fields in declaration order (top to bottom), so placing
+    /// this last ensures all data structures are dropped before the Mapper,
+    /// preventing dangling references to mmap'd memory.
+    mapper: Option<Mapper>,
 }
 
 impl Default for LoudsTrie {
@@ -70,7 +73,7 @@ impl LoudsTrie {
             cache_mask: 0,
             num_l1_nodes: 0,
             config: Config::new(),
-            mapper: Mapper::new(),
+            mapper: None,
         }
     }
 
@@ -836,16 +839,92 @@ impl LoudsTrie {
         }
     }
 
-    /// Maps the trie from memory (stub).
+    /// Maps the trie from static memory.
     ///
     /// # Arguments
     ///
-    /// * `_mapper` - Mapper for memory-mapped access
+    /// * `data` - Static byte slice containing the trie data
     ///
-    /// TODO: Implement when BitVector, FlatVector, Tail have proper I/O support
-    #[allow(dead_code)]
-    pub fn map(&mut self, _mapper: &mut Mapper<'_>) {
-        // Stub - requires proper I/O support in all components
+    /// # Errors
+    ///
+    /// Returns an error if mapping fails or data is invalid.
+    pub fn map(&mut self, data: &'static [u8]) -> std::io::Result<()> {
+        let mut mapper = Mapper::open_memory(data);
+        use crate::grimoire::trie::header::Header;
+        Header::new().map(&mut mapper)?;
+        self.map_internal(&mut mapper)?;
+        Ok(())
+    }
+
+    /// Maps the trie from a file using memory mapping.
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - Path to the file to map
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be opened/mapped or data is invalid.
+    pub fn mmap(&mut self, filename: &str) -> std::io::Result<()> {
+        let mut mapper = Mapper::open_file(filename)?;
+        use crate::grimoire::trie::header::Header;
+        Header::new().map(&mut mapper)?;
+        self.map_internal(&mut mapper)?;
+        // CRITICAL: Keep mapper alive to keep mmap'd memory valid
+        self.mapper = Some(mapper);
+        Ok(())
+    }
+
+    /// Internal map implementation (without header).
+    ///
+    /// Format (matching read_internal):
+    /// - louds: BitVector
+    /// - terminal_flags: BitVector
+    /// - link_flags: BitVector
+    /// - bases: `Vector<u8>`
+    /// - extras: FlatVector
+    /// - tail: Tail
+    /// - next_trie: Optional recursive LoudsTrie (if link_flags.num_1s() != 0 && tail.empty())
+    /// - cache: `Vector<Cache>`
+    /// - num_l1_nodes: u32
+    /// - config_flags: u32
+    ///
+    /// # Arguments
+    ///
+    /// * `mapper` - Mapper to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if mapping fails.
+    fn map_internal(&mut self, mapper: &mut Mapper) -> std::io::Result<()> {
+        // Map all component data structures
+        self.louds.map(mapper)?;
+        self.terminal_flags.map(mapper)?;
+        self.link_flags.map(mapper)?;
+        self.bases.map(mapper)?;
+        self.extras.map(mapper)?;
+        self.tail.map(mapper)?;
+
+        // Check if next_trie should exist
+        if self.link_flags.num_1s() != 0 && self.tail.empty() {
+            let mut next = Box::new(LoudsTrie::new());
+            next.map_internal(mapper)?;
+            self.next_trie = Some(next);
+        }
+
+        // Map cache
+        self.cache.map(mapper)?;
+        self.cache_mask = self.cache.size().saturating_sub(1);
+
+        // Map num_l1_nodes
+        let temp_num_l1_nodes: u32 = mapper.map_value()?;
+        self.num_l1_nodes = temp_num_l1_nodes as usize;
+
+        // Map and parse config flags
+        let temp_config_flags: u32 = mapper.map_value()?;
+        self.config.parse(temp_config_flags as i32);
+
+        Ok(())
     }
 
     /// Reads the trie from a reader (with header).

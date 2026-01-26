@@ -181,9 +181,48 @@ impl<T: Copy> Vector<T> {
         std::mem::swap(&mut self.fixed, &mut other.fixed);
     }
 
-    /// Maps the vector from a mapper (stub for now).
-    pub fn map(&mut self, _mapper: &mut Mapper<'_>) {
-        // TODO: implement memory mapping
+    /// Maps the vector from a mapper.
+    ///
+    /// # Arguments
+    ///
+    /// * `mapper` - Mapper to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if mapping fails.
+    pub fn map(&mut self, mapper: &mut Mapper) -> std::io::Result<()> {
+        // Read the total size (u64)
+        let total_size: u64 = mapper.map_value()?;
+
+        // Calculate number of elements
+        let elem_size = std::mem::size_of::<T>();
+        if elem_size == 0 {
+            self.fixed = true;
+            return Ok(()); // Zero-sized types
+        }
+
+        let num_elements = (total_size as usize) / elem_size;
+
+        // Allocate and map elements
+        self.data.clear();
+        self.data.reserve(num_elements);
+        #[allow(clippy::uninit_vec)]
+        unsafe {
+            self.data.set_len(num_elements);
+        }
+
+        if num_elements > 0 {
+            mapper.map_slice(&mut self.data[..])?;
+        }
+
+        // Skip alignment padding
+        let padding = ((8 - (total_size % 8)) % 8) as usize;
+        if padding > 0 {
+            mapper.seek(padding)?;
+        }
+
+        self.fixed = true;
+        Ok(())
     }
 
     /// Reads the vector from a reader.

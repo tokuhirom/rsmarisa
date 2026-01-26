@@ -166,6 +166,49 @@ impl BitVector {
         self.select1s.swap(&mut other.select1s);
     }
 
+    /// Maps the bit vector from a mapper.
+    ///
+    /// Format (matching C++ marisa-trie):
+    /// - units: `Vector<u64>`
+    /// - size: u32
+    /// - num_1s: u32
+    /// - ranks: `Vector<RankIndex>`
+    /// - select0s: `Vector<u32>`
+    /// - select1s: `Vector<u32>`
+    ///
+    /// # Arguments
+    ///
+    /// * `mapper` - Mapper to read from
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if mapping fails or if num_1s > size.
+    pub fn map(&mut self, mapper: &mut crate::grimoire::io::Mapper) -> std::io::Result<()> {
+        // Map units
+        self.units.map(mapper)?;
+
+        // Map size
+        let temp_size: u32 = mapper.map_value()?;
+        self.size = temp_size as usize;
+
+        // Map num_1s and validate
+        let temp_num_1s: u32 = mapper.map_value()?;
+        if temp_num_1s as usize > self.size {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "num_1s exceeds size",
+            ));
+        }
+        self.num_1s = temp_num_1s as usize;
+
+        // Map rank and select indices
+        self.ranks.map(mapper)?;
+        self.select0s.map(mapper)?;
+        self.select1s.map(mapper)?;
+
+        Ok(())
+    }
+
     /// Reads the bit vector from a reader.
     ///
     /// Format (matching C++ marisa-trie):

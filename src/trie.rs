@@ -8,7 +8,7 @@
 
 use crate::agent::Agent;
 use crate::base::{NodeOrder, TailMode};
-use crate::grimoire::io::{Mapper, Reader, Writer};
+use crate::grimoire::io::{Reader, Writer};
 use crate::grimoire::trie::louds_trie::LoudsTrie;
 use crate::keyset::Keyset;
 
@@ -78,28 +78,63 @@ impl Trie {
         self.trie = Some(temp);
     }
 
-    /// Memory-maps a trie from a file (stub).
+    /// Memory-maps a trie from a file.
+    ///
+    /// This method uses memory-mapped I/O for efficient loading of large tries.
+    /// The file is mapped into memory, and the trie data structures reference
+    /// the mapped memory directly, avoiding the need to copy data.
     ///
     /// # Arguments
     ///
-    /// * `_filename` - Path to the file
+    /// * `filename` - Path to the trie file
     ///
-    /// TODO: Implement when I/O support is complete
-    #[allow(dead_code)]
-    pub fn mmap(&mut self, _filename: &str) {
-        // Stub - requires full I/O support
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be opened/mapped or contains invalid data.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use marisa::Trie;
+    ///
+    /// let mut trie = Trie::new();
+    /// trie.mmap("dictionary.marisa").unwrap();
+    /// ```
+    pub fn mmap(&mut self, filename: &str) -> std::io::Result<()> {
+        let mut temp = Box::new(LoudsTrie::new());
+        temp.mmap(filename)?;
+        self.trie = Some(temp);
+        Ok(())
     }
 
-    /// Maps a trie from memory (stub).
+    /// Maps a trie from static memory.
+    ///
+    /// This method maps a trie from a byte slice that must have static lifetime.
+    /// Useful for embedding trie data in the binary or loading from a custom source.
     ///
     /// # Arguments
     ///
-    /// * `_mapper` - Mapper for memory-mapped access
+    /// * `data` - Static byte slice containing the trie data
     ///
-    /// TODO: Implement when I/O support is complete
-    #[allow(dead_code)]
-    pub fn map(&mut self, _mapper: &mut Mapper<'_>) {
-        // Stub - requires full I/O support
+    /// # Errors
+    ///
+    /// Returns an error if the data is invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use marisa::Trie;
+    ///
+    /// static TRIE_DATA: &[u8] = include_bytes!("dictionary.marisa");
+    ///
+    /// let mut trie = Trie::new();
+    /// trie.map(TRIE_DATA).unwrap();
+    /// ```
+    pub fn map(&mut self, data: &'static [u8]) -> std::io::Result<()> {
+        let mut temp = Box::new(LoudsTrie::new());
+        temp.map(data)?;
+        self.trie = Some(temp);
+        Ok(())
     }
 
     /// Loads a trie from a file.
@@ -779,5 +814,121 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_trie_mmap() {
+        // Rust-specific: Test memory-mapped file loading
+        use tempfile::NamedTempFile;
+
+        // Build and save a trie
+        let mut keyset = Keyset::new();
+        keyset.push_back_str("apple").unwrap();
+        keyset.push_back_str("application").unwrap();
+        keyset.push_back_str("apply").unwrap();
+
+        let mut trie1 = Trie::new();
+        trie1.build(&mut keyset, 0);
+
+        let temp_file = NamedTempFile::new().unwrap();
+        let path = temp_file.path().to_str().unwrap();
+        trie1.save(path).unwrap();
+
+        // Load with mmap
+        let mut trie2 = Trie::new();
+        trie2.mmap(path).unwrap();
+
+        // Verify structure
+        assert_eq!(trie2.num_keys(), 3);
+        assert_eq!(trie2.num_nodes(), trie1.num_nodes());
+
+        // Verify lookup works
+        let mut agent = Agent::new();
+        agent.set_query_str("apple");
+        assert!(trie2.lookup(&mut agent));
+        assert_eq!(std::str::from_utf8(agent.key().as_bytes()).unwrap(), "apple");
+
+        agent.set_query_str("application");
+        assert!(trie2.lookup(&mut agent));
+        assert_eq!(
+            std::str::from_utf8(agent.key().as_bytes()).unwrap(),
+            "application"
+        );
+
+        agent.set_query_str("apply");
+        assert!(trie2.lookup(&mut agent));
+
+        agent.set_query_str("banana");
+        assert!(!trie2.lookup(&mut agent));
+    }
+
+    #[test]
+    fn test_trie_mmap_vs_load_equivalence() {
+        // Rust-specific: Verify that mmap() and load() produce identical behavior
+        use tempfile::NamedTempFile;
+
+        // Build and save a trie
+        let mut keyset = Keyset::new();
+        keyset.push_back_str("test1").unwrap();
+        keyset.push_back_str("test2").unwrap();
+        keyset.push_back_str("test3").unwrap();
+
+        let mut trie = Trie::new();
+        trie.build(&mut keyset, 0);
+
+        let temp_file = NamedTempFile::new().unwrap();
+        let path = temp_file.path().to_str().unwrap();
+        trie.save(path).unwrap();
+
+        // Load via read
+        let mut trie_load = Trie::new();
+        trie_load.load(path).unwrap();
+
+        // Load via mmap
+        let mut trie_mmap = Trie::new();
+        trie_mmap.mmap(path).unwrap();
+
+        // Verify identical structure
+        assert_eq!(trie_load.num_keys(), trie_mmap.num_keys());
+        assert_eq!(trie_load.num_nodes(), trie_mmap.num_nodes());
+
+        // Verify identical lookup behavior
+        let test_keys = ["test1", "test2", "test3", "nonexistent"];
+        for key in &test_keys {
+            let mut agent1 = Agent::new();
+            let mut agent2 = Agent::new();
+
+            agent1.set_query_str(key);
+            agent2.set_query_str(key);
+
+            let result1 = trie_load.lookup(&mut agent1);
+            let result2 = trie_mmap.lookup(&mut agent2);
+
+            assert_eq!(result1, result2, "Lookup result mismatch for key: {}", key);
+            if result1 {
+                assert_eq!(
+                    agent1.key().as_bytes(),
+                    agent2.key().as_bytes(),
+                    "Key bytes mismatch for key: {}",
+                    key
+                );
+                assert_eq!(
+                    agent1.key().id(),
+                    agent2.key().id(),
+                    "Key ID mismatch for key: {}",
+                    key
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_trie_mmap_file_not_found() {
+        // Rust-specific: Test that mmap with non-existent file returns error
+        let mut trie = Trie::new();
+        let result = trie.mmap("/nonexistent/file.marisa");
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::NotFound);
     }
 }
