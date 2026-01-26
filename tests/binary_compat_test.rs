@@ -121,11 +121,5 @@ fn find_cpp_test_binary() -> Option<PathBuf> {
         PathBuf::from("/tmp/cpp_test"),
     ];
 
-    for path in candidates {
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    None
+    candidates.into_iter().find(|path| path.exists())
 }

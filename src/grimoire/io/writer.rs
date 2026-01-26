@@ -121,7 +121,7 @@ impl Writer {
             return Ok(());
         }
 
-        let size = std::mem::size_of::<T>() * values.len();
+        let size = std::mem::size_of_val(values);
         let slice = unsafe { std::slice::from_raw_parts(values.as_ptr() as *const u8, size) };
 
         if let Some(buffer) = &mut self.buffer {

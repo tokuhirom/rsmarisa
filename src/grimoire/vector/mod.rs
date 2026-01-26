@@ -15,4 +15,5 @@ pub mod pop_count;
 pub mod rank_index;
 pub mod select_bit;
 pub mod select_tables;
+#[allow(clippy::module_inception)]
 pub mod vector;

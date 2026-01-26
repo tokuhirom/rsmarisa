@@ -94,7 +94,7 @@ fn main() {
         last_result
     };
 
-    if let Err(_) = result {
+    if result.is_err() {
         process::exit(20);
     }
 }

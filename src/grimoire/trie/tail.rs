@@ -433,7 +433,7 @@ impl Tail {
                 state.key_buf_mut().push(self.buf[i]);
                 i += 1;
             }
-            return true;
+            true
         } else {
             // Binary mode
             let mut i = offset;
@@ -467,7 +467,7 @@ impl Tail {
                 }
                 i += 1;
             }
-            return true;
+            true
         }
     }
 

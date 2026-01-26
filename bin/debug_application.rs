@@ -4,18 +4,18 @@ use marisa::trie::Trie;
 
 fn main() {
     // Test the specific failing words in different combinations
-    let test_cases = vec![
-        vec!["application"],
-        vec!["app", "application"],
-        vec!["a", "app", "apple", "application"],
-        vec!["a", "app", "apple", "application", "apply"], // First 5 words
+    let test_cases = [
+        &["application"][..],
+        &["app", "application"][..],
+        &["a", "app", "apple", "application"][..],
+        &["a", "app", "apple", "application", "apply"][..], // First 5 words
     ];
 
     for (i, words) in test_cases.iter().enumerate() {
         println!("\n=== Test {}: {:?} ===", i + 1, words);
 
         let mut keyset = Keyset::new();
-        for word in words {
+        for word in *words {
             let _ = keyset.push_back_str(word);
         }
 
@@ -28,7 +28,7 @@ fn main() {
             trie.num_nodes()
         );
 
-        for word in words {
+        for word in *words {
             let mut agent = Agent::new();
             agent.set_query_str(word);
 

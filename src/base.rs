@@ -23,11 +23,13 @@ pub const INVALID_KEY_ID: u32 = u32::MAX;
 /// Tail mode for suffix storage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
+#[derive(Default)]
 pub enum TailMode {
     /// Text mode: merges suffixes as NULL-terminated strings.
     ///
     /// Available only if suffixes don't contain NULL characters.
     /// Automatically switches to Binary mode if NULL is detected.
+    #[default]
     TextTail = 0x01000,
 
     /// Binary mode: merges suffixes as byte sequences.
@@ -35,12 +37,6 @@ pub enum TailMode {
     /// Uses a bit vector to detect end of sequences instead of NULL.
     /// Requires more space if average suffix length > 8 bytes.
     BinaryTail = 0x02000,
-}
-
-impl Default for TailMode {
-    fn default() -> Self {
-        TailMode::TextTail
-    }
 }
 
 /// Invalid extra value constant (UINT32_MAX >> 8).
@@ -139,7 +135,7 @@ impl NumTries {
 /// Larger cache enables faster search but takes more space.
 ///
 /// Ported from: marisa_cache_level enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(u32)]
 pub enum CacheLevel {
     /// Huge cache size.
@@ -147,6 +143,7 @@ pub enum CacheLevel {
     /// Large cache size.
     Large = 0x00100,
     /// Normal cache size (default).
+    #[default]
     Normal = 0x00200,
     /// Small cache size.
     Small = 0x00400,
@@ -154,18 +151,12 @@ pub enum CacheLevel {
     Tiny = 0x00800,
 }
 
-impl Default for CacheLevel {
-    fn default() -> Self {
-        CacheLevel::Normal
-    }
-}
-
 /// Node arrangement order.
 ///
 /// The arrangement affects matching time cost and predictive search order.
 ///
 /// Ported from: marisa_node_order enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(u32)]
 pub enum NodeOrder {
     /// Arranges nodes in ascending label order.
@@ -176,13 +167,8 @@ pub enum NodeOrder {
     /// Arranges nodes in descending weight order (default).
     ///
     /// Generally better choice as it enables faster matching.
+    #[default]
     Weight = 0x20000,
-}
-
-impl Default for NodeOrder {
-    fn default() -> Self {
-        NodeOrder::Weight
-    }
 }
 
 /// Configuration masks for extracting specific config bits.

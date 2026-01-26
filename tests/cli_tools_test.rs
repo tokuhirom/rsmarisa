@@ -14,8 +14,8 @@ fn test_rsmarisa_build_binary_compatibility() {
     let test_keys = "a\napp\napple\napplication\napply\nbanana\nband\n";
 
     // Build with Rust tool
-    let mut rust_dict = NamedTempFile::new().unwrap();
-    let rust_output = Command::new("target/release/rsmarisa-build")
+    let rust_dict = NamedTempFile::new().unwrap();
+    let _rust_output = Command::new("target/release/rsmarisa-build")
         .arg("-o")
         .arg(rust_dict.path())
         .stdin(std::process::Stdio::piped())
@@ -25,7 +25,7 @@ fn test_rsmarisa_build_binary_compatibility() {
         .take()
         .unwrap()
         .write_all(test_keys.as_bytes())
-        .and_then(|_| Ok(()));
+        .map(|_| ());
 
     assert!(
         rust_output.is_ok(),
@@ -33,8 +33,8 @@ fn test_rsmarisa_build_binary_compatibility() {
     );
 
     // Build with C++ tool
-    let mut cpp_dict = NamedTempFile::new().unwrap();
-    let cpp_output = Command::new("marisa-build")
+    let cpp_dict = NamedTempFile::new().unwrap();
+    let _cpp_output = Command::new("marisa-build")
         .arg("-o")
         .arg(cpp_dict.path())
         .stdin(std::process::Stdio::piped())
@@ -44,7 +44,7 @@ fn test_rsmarisa_build_binary_compatibility() {
         .take()
         .unwrap()
         .write_all(test_keys.as_bytes())
-        .and_then(|_| Ok(()));
+        .map(|_| ());
 
     assert!(cpp_output.is_ok(), "Failed to write to marisa-build stdin");
 
@@ -71,7 +71,7 @@ fn test_rsmarisa_build_binary_compatibility() {
 fn test_rsmarisa_lookup_compatibility() {
     // Create test dictionary
     let test_keys = "a\napp\napple\napplication\napply\nbanana\nband\n";
-    let mut dict_file = NamedTempFile::new().unwrap();
+    let dict_file = NamedTempFile::new().unwrap();
 
     Command::new("marisa-build")
         .arg("-o")
@@ -91,7 +91,7 @@ fn test_rsmarisa_lookup_compatibility() {
     let queries = "a\napple\nbanana\nbandit\nzebra\n";
 
     // Lookup with Rust tool
-    let rust_output = Command::new("target/release/rsmarisa-lookup")
+    let _rust_output = Command::new("target/release/rsmarisa-lookup")
         .arg(dict_file.path())
         .stdin(std::process::Stdio::piped())
         .output()
@@ -140,7 +140,7 @@ fn test_rsmarisa_lookup_compatibility() {
 fn test_rsmarisa_common_prefix_search_compatibility() {
     // Create test dictionary
     let test_keys = "a\napp\napple\napplication\napply\nbanana\nband\n";
-    let mut dict_file = NamedTempFile::new().unwrap();
+    let dict_file = NamedTempFile::new().unwrap();
 
     Command::new("marisa-build")
         .arg("-o")
@@ -203,7 +203,7 @@ fn test_rsmarisa_common_prefix_search_compatibility() {
 fn test_rsmarisa_predictive_search_compatibility() {
     // Create test dictionary
     let test_keys = "a\napp\napple\napplication\napply\nbanana\nband\n";
-    let mut dict_file = NamedTempFile::new().unwrap();
+    let dict_file = NamedTempFile::new().unwrap();
 
     Command::new("marisa-build")
         .arg("-o")
@@ -266,7 +266,7 @@ fn test_rsmarisa_predictive_search_compatibility() {
 fn test_rsmarisa_reverse_lookup_compatibility() {
     // Create test dictionary
     let test_keys = "a\napp\napple\napplication\napply\nbanana\nband\n";
-    let mut dict_file = NamedTempFile::new().unwrap();
+    let dict_file = NamedTempFile::new().unwrap();
 
     Command::new("marisa-build")
         .arg("-o")

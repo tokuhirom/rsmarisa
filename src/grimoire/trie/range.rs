@@ -207,7 +207,7 @@ impl Eq for WeightedRange {}
 
 impl PartialOrd for WeightedRange {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.weight.partial_cmp(&other.weight)
+        Some(self.cmp(other))
     }
 }
 

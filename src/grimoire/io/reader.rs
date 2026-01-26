@@ -143,7 +143,7 @@ impl Reader {
             .as_mut()
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Reader not open"))?;
 
-        let size = std::mem::size_of::<T>() * values.len();
+        let size = std::mem::size_of_val(values);
         let slice = unsafe { std::slice::from_raw_parts_mut(values.as_mut_ptr() as *mut u8, size) };
 
         reader.read_exact(slice)?;

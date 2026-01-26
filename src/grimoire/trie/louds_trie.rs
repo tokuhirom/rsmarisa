@@ -236,11 +236,9 @@ impl LoudsTrie {
         self.terminal_flags.build(false, true);
 
         // Update keyset with final key IDs
-        for i in 0..keyset.size() {
-            let terminal_node = pairs[i].0;
-            let original_idx = pairs[i].1 as usize;
+        for &(terminal_node, original_idx) in &pairs {
             let key_id = self.terminal_flags.rank1(terminal_node as usize);
-            keyset.get_mut(original_idx).set_id(key_id);
+            keyset.get_mut(original_idx as usize).set_id(key_id);
         }
     }
 
@@ -1343,7 +1341,7 @@ impl LoudsTrie {
                 // Need to create next child
                 let current_history = {
                     let state = agent.state().expect("Agent must have state");
-                    state.history_back().clone()
+                    *state.history_back()
                 };
 
                 let mut next = History::new();

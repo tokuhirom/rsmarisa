@@ -106,7 +106,7 @@ impl<'a> Mapper<'a> {
             .data
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "Mapper not open"))?;
 
-        let size = std::mem::size_of::<T>() * values.len();
+        let size = std::mem::size_of_val(values);
         if self.position + size > data.len() {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,

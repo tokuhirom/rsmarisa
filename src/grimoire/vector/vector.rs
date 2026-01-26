@@ -210,6 +210,7 @@ impl<T: Copy> Vector<T> {
         // Allocate and read elements
         self.data.clear();
         self.data.reserve(size);
+        #[allow(clippy::uninit_vec)]
         unsafe {
             self.data.set_len(size);
         }

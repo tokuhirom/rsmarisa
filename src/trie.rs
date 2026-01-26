@@ -465,9 +465,9 @@ mod tests {
     fn test_trie_build() {
         // Rust-specific: Test basic trie building
         let mut keyset = Keyset::new();
-        keyset.push_back_str("apple");
-        keyset.push_back_str("banana");
-        keyset.push_back_str("cherry");
+        let _ = keyset.push_back_str("apple");
+        let _ = keyset.push_back_str("banana");
+        let _ = keyset.push_back_str("cherry");
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -478,8 +478,8 @@ mod tests {
     #[test]
     fn test_trie_lookup() {
         let mut keyset = Keyset::new();
-        keyset.push_back_str("app");
-        keyset.push_back_str("apple");
+        let _ = keyset.push_back_str("app");
+        let _ = keyset.push_back_str("apple");
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -508,8 +508,8 @@ mod tests {
     #[test]
     fn test_trie_reverse_lookup() {
         let mut keyset = Keyset::new();
-        keyset.push_back_str("a");
-        keyset.push_back_str("b");
+        let _ = keyset.push_back_str("a");
+        let _ = keyset.push_back_str("b");
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -527,9 +527,9 @@ mod tests {
         // Test 1: Single-character increments
         {
             let mut keyset = Keyset::new();
-            keyset.push_back_str("a");
-            keyset.push_back_str("ab");
-            keyset.push_back_str("abc");
+            let _ = keyset.push_back_str("a");
+            let _ = keyset.push_back_str("ab");
+            let _ = keyset.push_back_str("abc");
 
             let mut trie = Trie::new();
             trie.build(&mut keyset, 0);
@@ -557,8 +557,8 @@ mod tests {
         // ("apple" is NOT a prefix of "application")
         {
             let mut keyset = Keyset::new();
-            keyset.push_back_str("app");
-            keyset.push_back_str("apple");
+            let _ = keyset.push_back_str("app");
+            let _ = keyset.push_back_str("apple");
 
             let mut trie = Trie::new();
             trie.build(&mut keyset, 0);
@@ -578,9 +578,9 @@ mod tests {
     #[test]
     fn test_trie_predictive_search() {
         let mut keyset = Keyset::new();
-        keyset.push_back_str("a");
-        keyset.push_back_str("ab");
-        keyset.push_back_str("ac");
+        let _ = keyset.push_back_str("a");
+        let _ = keyset.push_back_str("ab");
+        let _ = keyset.push_back_str("ac");
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -604,7 +604,7 @@ mod tests {
     #[test]
     fn test_trie_clear() {
         let mut keyset = Keyset::new();
-        keyset.push_back_str("test");
+        let _ = keyset.push_back_str("test");
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -616,14 +616,14 @@ mod tests {
     #[test]
     fn test_trie_swap() {
         let mut keyset1 = Keyset::new();
-        keyset1.push_back_str("apple");
+        let _ = keyset1.push_back_str("apple");
 
         let mut trie1 = Trie::new();
         trie1.build(&mut keyset1, 0);
 
         let mut keyset2 = Keyset::new();
-        keyset2.push_back_str("banana");
-        keyset2.push_back_str("cherry");
+        let _ = keyset2.push_back_str("banana");
+        let _ = keyset2.push_back_str("cherry");
 
         let mut trie2 = Trie::new();
         trie2.build(&mut keyset2, 0);
@@ -637,7 +637,7 @@ mod tests {
     #[test]
     fn test_trie_empty() {
         let mut keyset = Keyset::new();
-        keyset.push_back_str("test");
+        let _ = keyset.push_back_str("test");
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -648,7 +648,7 @@ mod tests {
     #[test]
     fn test_trie_sizes() {
         let mut keyset = Keyset::new();
-        keyset.push_back_str("test");
+        let _ = keyset.push_back_str("test");
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -664,9 +664,9 @@ mod tests {
 
         // Build a trie
         let mut keyset = Keyset::new();
-        keyset.push_back_str("app").unwrap();
-        keyset.push_back_str("apple").unwrap();
-        keyset.push_back_str("application").unwrap();
+        let _ = keyset.push_back_str("app").unwrap();
+        let _ = keyset.push_back_str("apple").unwrap();
+        let _ = keyset.push_back_str("application").unwrap();
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -708,8 +708,8 @@ mod tests {
 
         // Build a trie
         let mut keyset = Keyset::new();
-        keyset.push_back_str("hello").unwrap();
-        keyset.push_back_str("world").unwrap();
+        let _ = keyset.push_back_str("hello").unwrap();
+        let _ = keyset.push_back_str("world").unwrap();
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
