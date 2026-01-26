@@ -38,6 +38,9 @@ jobs:
             exit 1
           fi
 
+      - name: Build release binaries
+        run: cargo build --release --bins
+
       - name: Run tests
         run: cargo test --verbose
 
