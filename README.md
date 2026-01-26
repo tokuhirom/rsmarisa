@@ -1,6 +1,6 @@
-# rust-marisa
+# rsmarisa
 
-[![CI](https://github.com/tokuhirom/rust-marisa/actions/workflows/ci.yml/badge.svg)](https://github.com/tokuhirom/rust-marisa/actions/workflows/ci.yml)
+[![CI](https://github.com/tokuhirom/rsmarisa/actions/workflows/ci.yml/badge.svg)](https://github.com/tokuhirom/rsmarisa/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/rsmarisa.svg)](https://crates.io/crates/rsmarisa)
 [![Documentation](https://docs.rs/rsmarisa/badge.svg)](https://docs.rs/rsmarisa)
 [![License](https://img.shields.io/badge/license-BSD--2--Clause-blue.svg)](LICENSE)

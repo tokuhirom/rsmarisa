@@ -48,4 +48,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Based on marisa-trie 0.3.1 (commit: 4ef33cc5)
 - License: BSD-2-Clause (same as original)
 
-[0.1.0]: https://github.com/tokuhirom/rust-marisa/releases/tag/v0.1.0
+[0.1.0]: https://github.com/tokuhirom/rsmarisa/releases/tag/v0.1.0

@@ -1,6 +1,6 @@
-# Contributing to rust-marisa
+# Contributing to rsmarisa
 
-Thank you for your interest in contributing to rust-marisa!
+Thank you for your interest in contributing to rsmarisa!
 
 ## Project Guidelines
 
