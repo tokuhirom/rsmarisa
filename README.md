@@ -135,16 +135,32 @@ cargo test -- --nocapture
 cargo test test_trie_lookup
 ```
 
-## Coming Soon
+## CLI Tools
 
-CLI tools with `rsmarisa-` prefix (to avoid conflicts with C++ marisa-trie):
-- `rsmarisa-build` - Build a dictionary from text input
-- `rsmarisa-lookup` - Look up keys in a dictionary
+Command-line tools with `rsmarisa-` prefix (to avoid conflicts with C++ marisa-trie):
+
+**Available:**
+- ✅ `rsmarisa-build` - Build a dictionary from text input (binary compatible with C++)
+- ✅ `rsmarisa-lookup` - Look up keys in a dictionary (results match C++ exactly)
+- ⚠️ `rsmarisa-dump` - Dump dictionary contents (has issues due to predictive_search bugs)
+
+**Coming Soon:**
 - `rsmarisa-common-prefix-search` - Find common prefixes
 - `rsmarisa-predictive-search` - Find keys with a given prefix
 - `rsmarisa-reverse-lookup` - Restore keys from IDs
-- `rsmarisa-dump` - Dump dictionary contents
 - `rsmarisa-benchmark` - Performance benchmarking
+
+### Usage Examples
+
+```bash
+# Build a dictionary
+echo -e "apple\nbanana\ncherry" | cargo run --release --bin rsmarisa-build -- -o dict.marisa
+
+# Look up keys
+echo -e "apple\ngrape" | cargo run --release --bin rsmarisa-lookup -- dict.marisa
+# Output: 0\tapple
+#         -1\tgrape
+```
 
 ## Performance
 
