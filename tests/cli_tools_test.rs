@@ -124,3 +124,60 @@ fn test_rsmarisa_lookup_compatibility() {
         "Lookup results differ between Rust and C++ implementations"
     );
 }
+
+#[test]
+fn test_rsmarisa_common_prefix_search_compatibility() {
+    // Create test dictionary
+    let test_keys = "a\napp\napple\napplication\napply\nbanana\nband\n";
+    let mut dict_file = NamedTempFile::new().unwrap();
+
+    Command::new("marisa-build")
+        .arg("-o")
+        .arg(dict_file.path())
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .expect("marisa-build not found")
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(test_keys.as_bytes())
+        .unwrap();
+
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
+    // Test query
+    let query = "application\n";
+
+    // Search with Rust tool
+    let mut rust_child = Command::new("target/release/rsmarisa-common-prefix-search")
+        .arg(dict_file.path())
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    rust_child.stdin.take().unwrap().write_all(query.as_bytes()).unwrap();
+    let rust_result = rust_child.wait_with_output().unwrap();
+    let rust_stdout = String::from_utf8(rust_result.stdout).unwrap();
+
+    // Search with C++ tool
+    let mut cpp_child = Command::new("marisa-common-prefix-search")
+        .arg(dict_file.path())
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    cpp_child.stdin.take().unwrap().write_all(query.as_bytes()).unwrap();
+    let cpp_result = cpp_child.wait_with_output().unwrap();
+    let cpp_stdout = String::from_utf8(cpp_result.stdout).unwrap();
+
+    assert_eq!(
+        rust_stdout,
+        cpp_stdout,
+        "Common prefix search results differ between Rust and C++ implementations"
+    );
+}
+
+// Note: predictive_search and reverse_lookup tests are skipped due to known bugs
+// See README Known Issues section

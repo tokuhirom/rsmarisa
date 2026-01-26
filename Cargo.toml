@@ -111,3 +111,15 @@ path = "src/bin/rsmarisa-lookup.rs"
 name = "rsmarisa-dump"
 path = "src/bin/rsmarisa-dump.rs"
 
+[[bin]]
+name = "rsmarisa-common-prefix-search"
+path = "src/bin/rsmarisa-common-prefix-search.rs"
+
+[[bin]]
+name = "rsmarisa-predictive-search"
+path = "src/bin/rsmarisa-predictive-search.rs"
+
+[[bin]]
+name = "rsmarisa-reverse-lookup"
+path = "src/bin/rsmarisa-reverse-lookup.rs"
+
