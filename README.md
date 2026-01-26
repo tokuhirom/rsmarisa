@@ -142,12 +142,12 @@ Command-line tools with `rsmarisa-` prefix (to avoid conflicts with C++ marisa-t
 **Available:**
 - ✅ `rsmarisa-build` - Build a dictionary from text input (binary compatible with C++)
 - ✅ `rsmarisa-lookup` - Look up keys in a dictionary (results match C++ exactly)
+- ✅ `rsmarisa-common-prefix-search` - Find keys that are prefixes of queries (results match C++ exactly)
 - ⚠️ `rsmarisa-dump` - Dump dictionary contents (has issues due to predictive_search bugs)
+- ⚠️ `rsmarisa-predictive-search` - Find keys with a given prefix (has issues due to predictive_search bugs)
+- ⚠️ `rsmarisa-reverse-lookup` - Restore keys from IDs (has issues due to reverse_lookup bugs)
 
 **Coming Soon:**
-- `rsmarisa-common-prefix-search` - Find common prefixes
-- `rsmarisa-predictive-search` - Find keys with a given prefix
-- `rsmarisa-reverse-lookup` - Restore keys from IDs
 - `rsmarisa-benchmark` - Performance benchmarking
 
 ### Usage Examples
@@ -160,6 +160,13 @@ echo -e "apple\nbanana\ncherry" | cargo run --release --bin rsmarisa-build -- -o
 echo -e "apple\ngrape" | cargo run --release --bin rsmarisa-lookup -- dict.marisa
 # Output: 0\tapple
 #         -1\tgrape
+
+# Find common prefixes
+echo "application" | cargo run --release --bin rsmarisa-common-prefix-search -- dict.marisa
+# Output: 3 found
+#         0\ta\tapplication
+#         1\tapp\tapplication
+#         5\tapplication\tapplication
 ```
 
 ## Performance
