@@ -141,7 +141,7 @@ impl FlatVector {
     /// Reads the flat vector from a reader.
     ///
     /// Format (matching C++ marisa-trie):
-    /// - units: Vector<u64>
+    /// - units: `Vector<u64>`
     /// - value_size: u32 (must be <= 32)
     /// - mask: u32
     /// - size: u64
@@ -181,7 +181,7 @@ impl FlatVector {
     /// Writes the flat vector to a writer.
     ///
     /// Format (matching C++ marisa-trie):
-    /// - units: Vector<u64>
+    /// - units: `Vector<u64>`
     /// - value_size: u32
     /// - mask: u32
     /// - size: u64

@@ -3,12 +3,12 @@
 //! Ported from: lib/marisa/grimoire/vector/bit-vector.cc
 //!
 //! This module provides the SELECT_TABLE used for finding the i-th set bit
-//! within a byte. The table is indexed as SELECT_TABLE[i][byte] where i is
+//! within a byte. The table is indexed as `SELECT_TABLE[i][byte]` where i is
 //! the rank of the bit to find (0-7) and byte is the byte value.
 
 /// Select lookup table for finding the position of the i-th set bit in a byte.
 ///
-/// SELECT_TABLE[i][byte] returns the position (0-7) of the i-th set bit in `byte`.
+/// `SELECT_TABLE[i][byte]` returns the position (0-7) of the i-th set bit in `byte`.
 /// If there are fewer than i+1 bits set, returns 7 as a sentinel value.
 ///
 /// Ported from: SELECT_TABLE in bit-vector.cc

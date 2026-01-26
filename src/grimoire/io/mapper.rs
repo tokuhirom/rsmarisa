@@ -95,7 +95,7 @@ impl<'a> Mapper<'a> {
     ///
     /// # Safety
     ///
-    /// This function reads raw bytes into the memory representation of [T].
+    /// This function reads raw bytes into the memory representation of `T`.
     /// The caller must ensure T is safe to initialize from arbitrary bytes.
     pub fn map_slice<T: Copy>(&mut self, values: &mut [T]) -> io::Result<()> {
         if values.is_empty() {

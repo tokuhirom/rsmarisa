@@ -884,11 +884,11 @@ impl LoudsTrie {
     /// - louds: BitVector
     /// - terminal_flags: BitVector
     /// - link_flags: BitVector
-    /// - bases: Vector<u8>
+    /// - bases: `Vector<u8>`
     /// - extras: FlatVector
     /// - tail: Tail
     /// - next_trie: Optional recursive LoudsTrie (if link_flags.num_1s() != 0 && tail.empty())
-    /// - cache: Vector<Cache>
+    /// - cache: `Vector<Cache>`
     /// - num_l1_nodes: u32
     /// - config_flags: u32
     ///
@@ -936,11 +936,11 @@ impl LoudsTrie {
     /// - louds: BitVector
     /// - terminal_flags: BitVector
     /// - link_flags: BitVector
-    /// - bases: Vector<u8>
+    /// - bases: `Vector<u8>`
     /// - extras: FlatVector
     /// - tail: Tail
     /// - next_trie: Optional recursive LoudsTrie (if exists)
-    /// - cache: Vector<Cache>
+    /// - cache: `Vector<Cache>`
     /// - num_l1_nodes: u32
     /// - config_flags: u32
     ///

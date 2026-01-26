@@ -169,12 +169,12 @@ impl BitVector {
     /// Reads the bit vector from a reader.
     ///
     /// Format (matching C++ marisa-trie):
-    /// - units: Vector<u64>
+    /// - units: `Vector<u64>`
     /// - size: u32
     /// - num_1s: u32
-    /// - ranks: Vector<RankIndex>
-    /// - select0s: Vector<u32>
-    /// - select1s: Vector<u32>
+    /// - ranks: `Vector<RankIndex>`
+    /// - select0s: `Vector<u32>`
+    /// - select1s: `Vector<u32>`
     ///
     /// # Arguments
     ///
@@ -212,12 +212,12 @@ impl BitVector {
     /// Writes the bit vector to a writer.
     ///
     /// Format (matching C++ marisa-trie):
-    /// - units: Vector<u64>
+    /// - units: `Vector<u64>`
     /// - size: u32
     /// - num_1s: u32
-    /// - ranks: Vector<RankIndex>
-    /// - select0s: Vector<u32>
-    /// - select1s: Vector<u32>
+    /// - ranks: `Vector<RankIndex>`
+    /// - select0s: `Vector<u32>`
+    /// - select1s: `Vector<u32>`
     ///
     /// # Arguments
     ///

@@ -60,7 +60,7 @@ impl Writer {
         }
     }
 
-    /// Creates a writer that writes to a Vec<u8>.
+    /// Creates a writer that writes to a `Vec<u8>`.
     pub fn from_vec(vec: Vec<u8>) -> Self {
         Writer {
             writer: None,
@@ -114,7 +114,7 @@ impl Writer {
     ///
     /// # Safety
     ///
-    /// This function writes the raw bytes of [T]'s memory representation.
+    /// This function writes the raw bytes of `T`'s memory representation.
     /// The caller must ensure T has a stable binary representation.
     pub fn write_slice<T>(&mut self, values: &[T]) -> io::Result<()> {
         if values.is_empty() {
@@ -193,7 +193,7 @@ impl Writer {
         self.buffer = None;
     }
 
-    /// Extracts the inner Vec<u8> if the writer was created with from_vec.
+    /// Extracts the inner `Vec<u8>` if the writer was created with from_vec.
     ///
     /// # Errors
     ///

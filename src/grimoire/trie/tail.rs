@@ -229,7 +229,7 @@ impl Tail {
     /// Reads tail from a reader.
     ///
     /// Format:
-    /// - buf: Vector<u8> (suffix buffer)
+    /// - buf: `Vector<u8>` (suffix buffer)
     /// - end_flags: BitVector (end markers for binary mode)
     ///
     /// # Arguments
@@ -248,7 +248,7 @@ impl Tail {
     /// Writes tail to a writer.
     ///
     /// Format:
-    /// - buf: Vector<u8> (suffix buffer)
+    /// - buf: `Vector<u8>` (suffix buffer)
     /// - end_flags: BitVector (end markers for binary mode)
     ///
     /// # Arguments
