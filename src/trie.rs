@@ -846,7 +846,10 @@ mod tests {
         let mut agent = Agent::new();
         agent.set_query_str("apple");
         assert!(trie2.lookup(&mut agent));
-        assert_eq!(std::str::from_utf8(agent.key().as_bytes()).unwrap(), "apple");
+        assert_eq!(
+            std::str::from_utf8(agent.key().as_bytes()).unwrap(),
+            "apple"
+        );
 
         agent.set_query_str("application");
         assert!(trie2.lookup(&mut agent));
