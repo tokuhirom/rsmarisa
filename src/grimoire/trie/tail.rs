@@ -573,9 +573,8 @@ mod tests {
         let total = tail.total_size();
         let io = tail.io_size();
 
-        // Both should be non-negative
-        assert!(total >= 0);
-        assert!(io >= 0);
+        // Both are usize, so always non-negative
+        let _ = (total, io); // Use the variables
     }
 
     #[test]

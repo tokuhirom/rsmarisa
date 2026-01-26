@@ -192,6 +192,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_word_size() {
         // Word size should be either 32 or 64
         assert!(WORD_SIZE == 32 || WORD_SIZE == 64);

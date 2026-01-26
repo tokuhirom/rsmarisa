@@ -301,12 +301,12 @@ mod tests {
         wrange.set_begin(10);
         wrange.set_end(20);
         wrange.set_key_pos(5);
-        wrange.set_weight(3.14);
+        wrange.set_weight(3.15);
 
         assert_eq!(wrange.begin(), 10);
         assert_eq!(wrange.end(), 20);
         assert_eq!(wrange.key_pos(), 5);
-        assert_eq!(wrange.weight(), 3.14);
+        assert_eq!(wrange.weight(), 3.15);
     }
 
     #[test]
@@ -356,7 +356,7 @@ mod tests {
 
     #[test]
     fn test_weighted_range_sorting() {
-        let mut ranges = vec![
+        let mut ranges = [
             make_weighted_range(0, 10, 0, 3.0),
             make_weighted_range(10, 20, 0, 1.0),
             make_weighted_range(20, 30, 0, 2.0),

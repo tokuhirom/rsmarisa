@@ -186,6 +186,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
     fn test_header_default() {
         let header = Header::default();
         assert_eq!(header.io_size(), HEADER_SIZE);

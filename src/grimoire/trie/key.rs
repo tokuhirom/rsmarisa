@@ -455,8 +455,8 @@ mod tests {
         let mut key = Key::new();
         key.set_str(data);
 
-        key.set_weight(3.14);
-        assert_eq!(key.weight(), 3.14);
+        key.set_weight(3.15);
+        assert_eq!(key.weight(), 3.15);
 
         key.set_terminal(42);
         assert_eq!(key.terminal(), 42);

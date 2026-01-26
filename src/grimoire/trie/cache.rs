@@ -237,9 +237,9 @@ mod tests {
     #[test]
     fn test_cache_weight() {
         let mut cache = Cache::new();
-        cache.set_weight(3.14);
+        cache.set_weight(3.15);
 
-        assert_eq!(cache.weight(), 3.14);
+        assert_eq!(cache.weight(), 3.15);
     }
 
     #[test]

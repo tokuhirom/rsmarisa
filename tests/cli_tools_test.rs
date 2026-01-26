@@ -15,7 +15,7 @@ fn test_rsmarisa_build_binary_compatibility() {
 
     // Build with Rust tool
     let rust_dict = NamedTempFile::new().unwrap();
-    let _rust_output = Command::new("target/release/rsmarisa-build")
+    let rust_output = Command::new("target/release/rsmarisa-build")
         .arg("-o")
         .arg(rust_dict.path())
         .stdin(std::process::Stdio::piped())
@@ -34,7 +34,7 @@ fn test_rsmarisa_build_binary_compatibility() {
 
     // Build with C++ tool
     let cpp_dict = NamedTempFile::new().unwrap();
-    let _cpp_output = Command::new("marisa-build")
+    let cpp_output = Command::new("marisa-build")
         .arg("-o")
         .arg(cpp_dict.path())
         .stdin(std::process::Stdio::piped())

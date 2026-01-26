@@ -664,9 +664,9 @@ mod tests {
 
         // Build a trie
         let mut keyset = Keyset::new();
-        let _ = keyset.push_back_str("app").unwrap();
-        let _ = keyset.push_back_str("apple").unwrap();
-        let _ = keyset.push_back_str("application").unwrap();
+        keyset.push_back_str("app").unwrap();
+        keyset.push_back_str("apple").unwrap();
+        keyset.push_back_str("application").unwrap();
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);
@@ -708,8 +708,8 @@ mod tests {
 
         // Build a trie
         let mut keyset = Keyset::new();
-        let _ = keyset.push_back_str("hello").unwrap();
-        let _ = keyset.push_back_str("world").unwrap();
+        keyset.push_back_str("hello").unwrap();
+        keyset.push_back_str("world").unwrap();
 
         let mut trie = Trie::new();
         trie.build(&mut keyset, 0);

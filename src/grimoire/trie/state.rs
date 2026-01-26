@@ -308,7 +308,7 @@ mod tests {
         state.key_buf_mut().push(b'h');
         state.key_buf_mut().push(b'i');
 
-        assert_eq!(state.key_buf(), &[b'h', b'i']);
+        assert_eq!(state.key_buf(), b"hi");
     }
 
     #[test]
@@ -400,7 +400,7 @@ mod tests {
 
         let state2 = state1.clone();
         assert_eq!(state2.node_id(), 42);
-        assert_eq!(state2.key_buf(), &[b't']);
+        assert_eq!(state2.key_buf(), b"t");
     }
 
     #[test]

@@ -51,7 +51,7 @@ fn main() {
 
     // Show access order (reverse)
     println!("Reverse access pattern for each entry:");
-    for (_i, entry) in entries.iter().take(5).enumerate() {
+    for entry in entries.iter().take(5) {
         let word = std::str::from_utf8(entry.as_bytes()).unwrap();
         print!("  {}: '{}' -> ", word, word);
         for j in 0..entry.length() {

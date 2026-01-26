@@ -254,8 +254,8 @@ mod tests {
     #[test]
     fn test_key_set_weight() {
         let mut key = Key::new();
-        key.set_weight(3.14);
-        assert!((key.weight() - 3.14).abs() < 0.001);
+        key.set_weight(3.15);
+        assert!((key.weight() - 3.15).abs() < 0.001);
     }
 
     #[test]
