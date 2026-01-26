@@ -413,12 +413,12 @@ The tagpr configuration is in `.tagpr`:
 	command = cargo build --release
 ```
 
-## Project Status (as of 2026-01-26)
+## Project Status (as of 2026-01-27)
 
 ### ✅ Completed
 - **Core library**: All essential trie operations implemented
 - **Binary compatibility**: Byte-for-byte identical output to C++ version
-- **Test coverage**: 314 tests passing (ported from C++ + Rust-specific)
+- **Test coverage**: 321 tests passing (ported from C++ + Rust-specific)
 - **CLI tools**: All 6 tools implemented and verified
   - `rsmarisa-build` - Dictionary builder
   - `rsmarisa-lookup` - Key lookup
@@ -430,13 +430,17 @@ The tagpr configuration is in `.tagpr`:
 - **Memory safety**: Fixed all use-after-free bugs in reverse_lookup and predictive_search
 - **Published to crates.io**: Version 0.1.0 available at https://crates.io/crates/rsmarisa
 - **Automated releases**: Using tagpr for release management and GitHub Actions for CI/CD
+- **Memory-mapped I/O**: Full implementation using memmap2
+  - `Trie::mmap(filename)` - Load from file-backed memory map
+  - `Trie::map(data)` - Load from static memory
+  - Binary compatible with C++-created dictionaries
+  - All vector types support map() operation
+  - Proper lifetime management to prevent dangling pointers
 
 ### 📝 Known Issues
 - Numerous compiler warnings (mostly lifetime annotations) - non-critical
-- `Mapper` memory-mapped I/O not yet implemented (currently uses read/write)
 
 ### 🎯 Future Work
-- Implement memory-mapped I/O support
 - Add benchmarking tool (`rsmarisa-benchmark`)
 - Clean up compiler warnings
 - Performance optimization
@@ -447,6 +451,89 @@ The tagpr configuration is in `.tagpr`:
 - Baseline version: 0.3.1
 - Baseline commit: `4ef33cc5a2b6b4f5e147e4564a5236e163d67982`
 - Original license: BSD-2-Clause OR LGPL-2.1-or-later
+
+## Memory-Mapped I/O Implementation
+
+### Overview
+
+rust-marisa now supports true memory-mapped file I/O using the `memmap2` crate. This provides efficient loading of large dictionaries without copying data into memory.
+
+### Architecture
+
+**Mapper without lifetime parameter**: The original design used `Mapper<'a>` with a borrowed lifetime, which made it impossible to own file-backed memory maps. The refactored design uses `Mapper` (no lifetime) that can own either:
+- File-backed `Mmap` (from memmap2)
+- Borrowed `&'static [u8]` memory
+
+**Ownership model**:
+```rust
+pub struct Mapper {
+    mmap: Option<Mmap>,              // File-backed mmap
+    borrowed: Option<&'static [u8]>, // Borrowed memory
+    position: usize,
+}
+```
+
+**Critical: Drop order safety**: The `mapper` field in `LoudsTrie` is placed LAST in the struct declaration. Rust drops fields in declaration order (top to bottom), so this ensures all data structures referencing mmap'd memory are dropped before the `Mapper` itself, preventing dangling pointers.
+
+### Public API
+
+```rust
+// File-backed memory mapping (recommended for large dictionaries)
+let mut trie = Trie::new();
+trie.mmap("dictionary.marisa")?;
+
+// Static memory mapping (for embedded data)
+static DATA: &[u8] = include_bytes!("dictionary.marisa");
+let mut trie = Trie::new();
+trie.map(DATA)?;
+
+// Traditional read (still supported)
+let mut trie = Trie::new();
+trie.load("dictionary.marisa")?;
+```
+
+### Implementation Details
+
+All vector types now support both `read()` and `map()` operations:
+- `Vector<T>::map()` - Generic vector mapping
+- `BitVector::map()` - Bit vector with rank/select indices
+- `FlatVector::map()` - Flat vector for packed integers
+- `Tail::map()` - Tail storage for suffixes
+
+The binary format is identical between `read()` and `map()`, ensuring:
+- Files created by Rust can be loaded by C++ (via both methods)
+- Files created by C++ can be loaded by Rust (via both methods)
+- `load()` and `mmap()` produce identical behavior
+
+### Safety Considerations
+
+**Memory mapping safety**: The `unsafe` block in `Mapper::open_file()` is required because:
+- File could be modified externally while mapped
+- File could be truncated while mapped
+
+**Mitigations**:
+- Files are opened read-only (PROT_READ)
+- Documentation warns users not to modify files while mapped
+- Matches C++ behavior exactly
+
+### Testing
+
+Added comprehensive tests:
+- `test_trie_mmap` - Basic mmap functionality
+- `test_trie_mmap_vs_load_equivalence` - Verify identical behavior with load()
+- `test_trie_mmap_file_not_found` - Error handling
+- Integration test with C++-created dictionaries
+
+### Performance Characteristics
+
+**Large dictionaries (>100MB)**:
+- Load time: O(1) instant startup vs O(n) read/parse
+- Memory: OS page cache (shared) vs heap allocation
+- First access: Slower (page fault) then fast
+
+**Small dictionaries (<1MB)**:
+- Minimal benefit, setup overhead may dominate
+- Use `load()` for simplicity
 
 ## Key Lessons Learned
 

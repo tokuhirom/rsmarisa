@@ -24,6 +24,8 @@ exclude = [
 [dependencies]
 # Required for CLI tools (rsmarisa-*)
 clap = { version = "4.5", features = ["derive"] }
+# Memory-mapped file I/O
+memmap2 = "0.9"
 
 [dev-dependencies]
 tempfile = "3.0"

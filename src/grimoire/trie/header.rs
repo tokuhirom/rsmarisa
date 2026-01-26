@@ -56,12 +56,21 @@ impl Header {
     ///
     /// * `mapper` - The mapper to read from
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the header is invalid (TODO: should return Result)
-    pub fn map(&mut self, _mapper: &mut Mapper<'_>) {
-        // TODO: implement when Mapper is complete
-        panic!("Header::map not yet implemented - Mapper interface incomplete");
+    /// Returns an error if the header is invalid or mapping fails
+    pub fn map(&mut self, mapper: &mut Mapper) -> std::io::Result<()> {
+        let mut buf = [0u8; HEADER_SIZE];
+        mapper.map_slice(&mut buf)?;
+
+        if !Self::test_header(&buf) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid MARISA header",
+            ));
+        }
+
+        Ok(())
     }
 
     /// Reads the header from a reader.
