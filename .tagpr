@@ -1,0 +1,9 @@
+# tagpr configuration for rsmarisa
+# This file uses gitconfig (INI) format
+
+[tagpr]
+	vPrefix = true
+	releaseBranch = main
+	versionFile = Cargo.toml
+	changelog = true
+	command = cargo build --release
