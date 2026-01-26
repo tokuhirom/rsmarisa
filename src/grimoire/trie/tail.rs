@@ -139,9 +139,20 @@ impl Tail {
             entries[i].set_id(i);
         }
 
-        // Sort entries using the same algorithm as C++
+        // Sort entries using StringComparer (descending order for suffix matching)
+        // C++ StringComparer returns true if lhs > rhs
+        // For descending order: if a > b, a should come first, so return Less
         let entries_slice = entries.as_mut_slice();
-        crate::grimoire::algorithm::sort::sort(entries_slice);
+        entries_slice.sort_by(|a, b| {
+            use crate::grimoire::trie::entry::StringComparer;
+            if StringComparer::compare(a, b) {
+                std::cmp::Ordering::Less  // a > b, descending order means a comes first
+            } else if StringComparer::compare(b, a) {
+                std::cmp::Ordering::Greater  // b > a, descending order means b comes first (a comes after)
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        });
 
         let mut temp_offsets: Vector<u32> = Vector::new();
         temp_offsets.resize(entries.size(), 0);

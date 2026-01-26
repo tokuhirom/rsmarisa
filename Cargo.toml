@@ -102,3 +102,8 @@ path = "bin/debug_sort_order.rs"
 name = "debug_build_tail"
 path = "bin/debug_build_tail.rs"
 
+
+[[bin]]
+name = "test_string_comparer"
+path = "bin/test_string_comparer.rs"
+
