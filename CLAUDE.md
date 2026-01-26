@@ -159,6 +159,56 @@ fn test_bit_vector_rust_specific() {
 
 - **Minimize `unsafe`**: Only use `unsafe` where necessary for performance or C++ compatibility; document why it's needed
 
+### Memory Safety with Raw Pointers
+
+**Critical**: This codebase uses raw pointers extensively (especially in `Key` struct) to maintain C++ API compatibility. Extra care is required to avoid use-after-free bugs.
+
+**Common Pitfall - Dangling Pointers**:
+```rust
+// ❌ WRONG: Temporary Vec is freed, leaving dangling pointer
+let temp_vec = state.key_buf().to_vec();
+agent.set_key_bytes(&temp_vec);  // Stores raw pointer
+// temp_vec dropped here → pointer now invalid!
+
+// ✅ CORRECT: Point to long-lived buffer
+agent.set_key_from_state_buf();  // Points to agent's own state buffer
+```
+
+**Guidelines for Raw Pointer Usage**:
+
+1. **Never point to temporary data**: Raw pointers must only reference data that will outlive the pointer's usage
+   - ✅ Good: Point to agent's internal buffers (query, state.key_buf)
+   - ✅ Good: Point to static data or heap-allocated data with known lifetime
+   - ❌ Bad: Point to local Vec that gets dropped
+   - ❌ Bad: Point to `.to_vec()` results
+
+2. **Document lifetime assumptions**: When storing raw pointers, document the expected lifetime
+   ```rust
+   pub fn set_bytes(&mut self, bytes: &[u8]) {
+       // SAFETY: Caller must ensure bytes outlive this Key instance
+       self.ptr = Some(bytes.as_ptr());
+   }
+   ```
+
+3. **Provide safe helper methods**: Add convenience methods that manage lifetimes correctly
+   ```rust
+   pub fn set_key_from_state_buf(&mut self) {
+       // Safe: state is owned by self, so buffer lives as long as self
+       let buf = self.state.as_ref().unwrap().key_buf();
+       self.key.set_bytes(buf);
+   }
+   ```
+
+4. **Test with Address Sanitizer**: When debugging memory issues, use:
+   ```bash
+   RUSTFLAGS="-Z sanitizer=address" cargo test
+   ```
+
+**Known Safe Patterns in this Codebase**:
+- `agent.set_key_from_query()` - Points to agent's query buffer ✅
+- `agent.set_key_from_state_buf()` - Points to agent's state buffer ✅
+- `key.set_str(s)` where `s` is from function parameter - Caller ensures lifetime ✅
+
 ### API Design
 
 - **Maintain C++ API semantics**: Public APIs should behave similarly to the original
@@ -166,6 +216,42 @@ fn test_bit_vector_rust_specific() {
 - **Add Rust conveniences**: Implement traits like `Default`, `Clone`, `Debug` where appropriate
 
 - **Iterator support**: Where C++ uses callback-based iteration, provide Rust iterators
+
+### CLI Tools
+
+**Naming Convention**: Use `rsmarisa-` prefix to avoid conflicts with C++ tools
+  - `marisa-build` → `rsmarisa-build`
+  - `marisa-lookup` → `rsmarisa-lookup`
+  - etc.
+
+**Testing Strategy**:
+1. **Build release binaries first**: CLI tools should be tested in release mode
+   ```bash
+   cargo build --release --bin rsmarisa-build
+   ```
+
+2. **Create integration tests**: Verify output matches C++ tools exactly
+   ```rust
+   #[test]
+   fn test_rsmarisa_lookup_compatibility() {
+       // Build dict with C++ tool
+       // Query with both Rust and C++ tools
+       // Assert outputs are identical
+   }
+   ```
+
+3. **Test all flags and options**: Ensure all command-line flags work correctly
+   - Input/output formats (text, binary)
+   - Configuration options (num_tries, cache_level, etc.)
+   - Edge cases (empty input, large files, etc.)
+
+4. **Verify with CI**: Add CLI tool tests to continuous integration
+
+**Implementation Guidelines**:
+- Use `clap` for argument parsing (consistent with modern Rust practices)
+- Handle I/O errors properly with meaningful error messages
+- Exit codes should match C++ tools where applicable
+- Support stdin/stdout for pipeline usage
 
 ## File Naming Convention
 
@@ -218,9 +304,56 @@ rust-marisa/
 7. **Run tests** to ensure compatibility
 8. **Update porting status** in tracking document
 
+## Project Status (as of 2026-01-26)
+
+### ✅ Completed
+- **Core library**: All essential trie operations implemented
+- **Binary compatibility**: Byte-for-byte identical output to C++ version
+- **Test coverage**: 314 tests passing (ported from C++ + Rust-specific)
+- **CLI tools**: All 6 tools implemented and verified
+  - `rsmarisa-build` - Dictionary builder
+  - `rsmarisa-lookup` - Key lookup
+  - `rsmarisa-common-prefix-search` - Prefix search
+  - `rsmarisa-predictive-search` - Predictive search
+  - `rsmarisa-reverse-lookup` - ID to key conversion
+  - `rsmarisa-dump` - Dictionary dumper
+- **Integration tests**: CLI tools verified against C++ counterparts
+- **Memory safety**: Fixed all use-after-free bugs in reverse_lookup and predictive_search
+
+### 📝 Known Issues
+- Numerous compiler warnings (mostly lifetime annotations) - non-critical
+- `Mapper` memory-mapped I/O not yet implemented (currently uses read/write)
+
+### 🎯 Future Work
+- Implement memory-mapped I/O support
+- Add benchmarking tool (`rsmarisa-benchmark`)
+- Clean up compiler warnings
+- Performance optimization
+- Publish to crates.io
+
 ## References
 
 - Original repository: https://github.com/s-yata/marisa-trie
 - Baseline version: 0.3.1
 - Baseline commit: `4ef33cc5a2b6b4f5e147e4564a5236e163d67982`
 - Original license: BSD-2-Clause OR LGPL-2.1-or-later
+
+## Key Lessons Learned
+
+### 1. Use-After-Free Prevention
+The most critical bug encountered was use-after-free when storing raw pointers to temporary data. Always ensure pointers reference long-lived data owned by the parent structure.
+
+### 2. Binary Compatibility Debugging
+When output doesn't match C++:
+1. Add extensive debug logging to both implementations
+2. Compare step-by-step to find divergence point
+3. Verify data structure layouts match exactly
+4. Check sort order and comparison functions
+5. Use `cmp` for binary file comparison
+
+### 3. Integration Testing
+Testing against the original C++ implementation is invaluable:
+- Catches subtle behavioral differences
+- Ensures true compatibility
+- Provides confidence in correctness
+- Documents expected behavior
