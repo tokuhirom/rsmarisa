@@ -22,10 +22,11 @@ exclude = [
 ]
 
 [dependencies]
+# Required for CLI tools (rsmarisa-*)
+clap = { version = "4.5", features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3.0"
-clap = { version = "4.5", features = ["derive"] }
 
 [lib]
 name = "marisa"
