@@ -304,6 +304,60 @@ rust-marisa/
 7. **Run tests** to ensure compatibility
 8. **Update porting status** in tracking document
 
+## Development Workflow
+
+### Branch Protection
+
+**IMPORTANT**: The `main` branch is protected. Direct pushes to `main` are not allowed.
+
+**Required workflow**:
+1. **Create a feature branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make your changes**: Commit your work to the feature branch
+   ```bash
+   git add .
+   git commit -m "feat: your feature description"
+   ```
+
+3. **Push to remote**:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+4. **Create a Pull Request**: Open a PR on GitHub to merge into `main`
+
+5. **Wait for CI**: All CI checks must pass before merging
+
+6. **Merge**: Once approved and CI passes, merge the PR
+
+**Why branch protection?**
+- Ensures all changes go through CI validation
+- Maintains code quality and prevents breaking changes
+- Creates a reviewable history of changes
+- Protects against accidental pushes to production branch
+
+### Working with Pull Requests
+
+```bash
+# Create and switch to a new branch
+git checkout -b fix/issue-description
+
+# Make changes, commit
+git commit -m "fix: description"
+
+# Push and create PR
+git push origin fix/issue-description
+gh pr create --title "Fix: description" --body "Details about the fix"
+
+# After PR is merged, clean up
+git checkout main
+git pull
+git branch -d fix/issue-description
+```
+
 ## Project Status (as of 2026-01-26)
 
 ### ✅ Completed
