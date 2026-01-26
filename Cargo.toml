@@ -89,21 +89,13 @@ path = "bin/test_rust_7words_lookup.rs"
 
 
 [[bin]]
-name = "debug_entry_indexing"
-path = "bin/debug_entry_indexing.rs"
-
-
-[[bin]]
 name = "debug_sort_order"
 path = "bin/debug_sort_order.rs"
 
 
 [[bin]]
-name = "debug_build_tail"
-path = "bin/debug_build_tail.rs"
-
-
-[[bin]]
 name = "test_string_comparer"
 path = "bin/test_string_comparer.rs"
+
+
 

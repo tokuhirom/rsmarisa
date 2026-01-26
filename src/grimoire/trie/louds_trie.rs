@@ -687,7 +687,13 @@ impl LoudsTrie {
                     let start = w_range.key_pos();
                     let len = key_pos - w_range.key_pos();
                     let key_bytes = keys[w_range.begin()].as_bytes();
-                    let substring = &key_bytes[start..start + len];
+                    // For ReverseKey: as_bytes() returns forward bytes, but start/len
+                    // are indices in the reversed access order. We need to convert
+                    // reverse indices to forward indices.
+                    // If ReverseKey("banana") and start=3, len=3, we want "ban" not "ana"
+                    let forward_start = key_bytes.len() - start - len;
+                    let forward_end = key_bytes.len() - start;
+                    let substring = &key_bytes[forward_start..forward_end];
                     // Store raw pointer to avoid borrow checker issues
                     // SAFETY: The slice is valid for lifetime 'a (from original keyset)
                     let ptr: *const [u8] = substring as *const [u8];
@@ -1658,10 +1664,11 @@ impl LoudsTrie {
         let query_len = agent.query().length();
         let mut query_pos = agent.state().expect("Agent must have state").query_pos();
 
+        let query_bytes = agent.query().as_bytes().to_vec();
+
         assert!(query_pos < query_len, "Query position out of bounds");
         assert!(node_id != 0, "Node ID must not be 0");
 
-        let query_bytes = agent.query().as_bytes().to_vec();
         let mut node_id = node_id;
 
         loop {
@@ -1672,6 +1679,8 @@ impl LoudsTrie {
                     if !self.match_link(agent, self.cache[cache_id].link()) {
                         return false;
                     }
+                    // Re-sync local query_pos after match_link may have modified agent state
+                    query_pos = agent.state().expect("Agent must have state").query_pos();
                 } else if self.cache[cache_id].label() == query_bytes[query_pos] {
                     query_pos += 1;
                     agent
@@ -1697,8 +1706,13 @@ impl LoudsTrie {
                     if !self.match_link(agent, self.get_link_simple(node_id)) {
                         return false;
                     }
+                    // Re-sync local query_pos after match_link may have modified agent state
+                    query_pos = agent.state().expect("Agent must have state").query_pos();
                 } else if !self.tail.match_tail(agent, self.get_link_simple(node_id)) {
                     return false;
+                } else {
+                    // Re-sync local query_pos after tail.match_tail may have modified agent state
+                    query_pos = agent.state().expect("Agent must have state").query_pos();
                 }
             } else if self.bases[node_id] == query_bytes[query_pos] {
                 query_pos += 1;
@@ -1739,6 +1753,8 @@ impl LoudsTrie {
                     if !self.prefix_match(agent, self.cache[cache_id].link()) {
                         return false;
                     }
+                    // Re-sync local query_pos after prefix_match may have modified agent state
+                    query_pos = agent.state().expect("Agent must have state").query_pos();
                 } else if self.cache[cache_id].label() == query_bytes[query_pos] {
                     agent
                         .state_mut()
@@ -1763,6 +1779,8 @@ impl LoudsTrie {
                     if !self.prefix_match(agent, self.get_link_simple(node_id)) {
                         return false;
                     }
+                    // Re-sync local query_pos after prefix_match may have modified agent state
+                    query_pos = agent.state().expect("Agent must have state").query_pos();
                 } else if self.bases[node_id] == query_bytes[query_pos] {
                     agent
                         .state_mut()

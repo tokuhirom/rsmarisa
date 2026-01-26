@@ -139,19 +139,26 @@ impl Tail {
             entries[i].set_id(i);
         }
 
-        // Sort entries using StringComparer (descending order for suffix matching)
-        // C++ StringComparer returns true if lhs > rhs
-        // For descending order: if a > b, a should come first, so return Less
+        // Sort entries using algorithm::sort semantics (ascending order)
+        // C++ tail.cc uses algorithm::sort which compares in ascending order:
+        //   lhs[i] < rhs[i] => lhs comes first
+        //   shorter string comes first if it's a prefix
         let entries_slice = entries.as_mut_slice();
         entries_slice.sort_by(|a, b| {
-            use crate::grimoire::trie::entry::StringComparer;
-            if StringComparer::compare(a, b) {
-                std::cmp::Ordering::Less  // a > b, descending order means a comes first
-            } else if StringComparer::compare(b, a) {
-                std::cmp::Ordering::Greater  // b > a, descending order means b comes first (a comes after)
-            } else {
-                std::cmp::Ordering::Equal
+            for i in 0..a.length() {
+                if i == b.length() {
+                    // a is longer than b, a comes after
+                    return std::cmp::Ordering::Greater;
+                }
+                let a_byte = a.get(i);
+                let b_byte = b.get(i);
+                if a_byte != b_byte {
+                    // ascending order by byte value
+                    return a_byte.cmp(&b_byte);
+                }
             }
+            // a is shorter or equal length
+            a.length().cmp(&b.length())
         });
 
         let mut temp_offsets: Vector<u32> = Vector::new();
@@ -326,8 +333,11 @@ impl Tail {
             loop {
                 // Access buf[offset + (query_pos - initial_query_pos)]
                 let buf_index = offset + (query_pos - initial_query_pos);
-                if buf_index >= self.buf.size() || self.buf[buf_index] != query_bytes[query_pos] {
-                    return false;
+                if buf_index >= self.buf.size() {
+                    return false;  // Unexpected end of buffer
+                }
+                if self.buf[buf_index] != query_bytes[query_pos] {
+                    return false;  // Mismatch
                 }
                 query_pos += 1;
                 agent
@@ -336,12 +346,15 @@ impl Tail {
                     .set_query_pos(query_pos);
 
                 let buf_index = offset + (query_pos - initial_query_pos);
-                if buf_index >= self.buf.size() || self.buf[buf_index] == 0 {
-                    return true;
+                if buf_index >= self.buf.size() {
+                    return false;  // Unexpected end of buffer
+                }
+                if self.buf[buf_index] == 0 {
+                    return true;  // Found null terminator
                 }
 
                 if query_pos >= query_bytes.len() {
-                    return false;
+                    return false;  // Query exhausted but no null terminator
                 }
             }
         } else {
