@@ -358,6 +358,61 @@ git pull
 git branch -d fix/issue-description
 ```
 
+## Release Process
+
+This project uses [tagpr](https://github.com/Songmu/tagpr) for automated release management.
+
+### How tagpr Works
+
+1. **During Development**: Add your changes under the `## [Unreleased]` section in CHANGELOG.md
+   ```markdown
+   ## [Unreleased]
+
+   ### Added
+   - New feature description
+
+   ### Fixed
+   - Bug fix description
+   ```
+
+2. **Automatic PR Creation**: When you push to `main`, tagpr automatically:
+   - Creates/updates a release PR
+   - Bumps the version in `Cargo.toml` based on commit messages
+   - Updates CHANGELOG.md with the new version and date
+
+3. **Release**: When you merge the tagpr PR:
+   - tagpr automatically creates a git tag (e.g., `v0.1.1`)
+   - The release workflow triggers (`.github/workflows/release.yml`)
+   - Package is published to crates.io
+   - GitHub Release is created
+
+### Version Bumping Rules
+
+tagpr determines version bumps from commit messages:
+- **Major**: Breaking changes (e.g., `feat!: breaking change` or `BREAKING CHANGE:` in commit body)
+- **Minor**: New features (e.g., `feat: add new feature`)
+- **Patch**: Bug fixes and other changes (e.g., `fix: correct bug`, `docs: update README`)
+
+### Manual Override
+
+If you need to manually specify the version:
+1. Edit the tagpr release PR
+2. Change the version in Cargo.toml
+3. Update the CHANGELOG.md header
+4. Merge the PR
+
+### Configuration
+
+The tagpr configuration is in `.tagpr`:
+```ini
+[tagpr]
+	vPrefix = true
+	releaseBranch = main
+	versionFile = Cargo.toml
+	changelog = true
+	command = cargo build --release
+```
+
 ## Project Status (as of 2026-01-26)
 
 ### ✅ Completed
@@ -373,6 +428,8 @@ git branch -d fix/issue-description
   - `rsmarisa-dump` - Dictionary dumper
 - **Integration tests**: CLI tools verified against C++ counterparts
 - **Memory safety**: Fixed all use-after-free bugs in reverse_lookup and predictive_search
+- **Published to crates.io**: Version 0.1.0 available at https://crates.io/crates/rsmarisa
+- **Automated releases**: Using tagpr for release management and GitHub Actions for CI/CD
 
 ### 📝 Known Issues
 - Numerous compiler warnings (mostly lifetime annotations) - non-critical
@@ -383,7 +440,6 @@ git branch -d fix/issue-description
 - Add benchmarking tool (`rsmarisa-benchmark`)
 - Clean up compiler warnings
 - Performance optimization
-- Publish to crates.io
 
 ## References
 
