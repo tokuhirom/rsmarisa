@@ -9,7 +9,7 @@ fn main() {
 
     let mut keyset = Keyset::new();
     for word in &words_6 {
-        keyset.push_back_str(word);
+        let _ = keyset.push_back_str(word);
     }
 
     let mut trie = Trie::new();
@@ -28,7 +28,7 @@ fn main() {
 
     let mut keyset = Keyset::new();
     for word in &words_7 {
-        keyset.push_back_str(word);
+        let _ = keyset.push_back_str(word);
     }
 
     let mut trie = Trie::new();

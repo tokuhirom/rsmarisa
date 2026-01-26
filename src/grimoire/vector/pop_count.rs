@@ -6,7 +6,6 @@
 //! Rust's standard library provides hardware-accelerated implementations
 //! via count_ones(), which compiles to POPCNT instruction when available.
 
-use crate::base::WORD_SIZE;
 
 /// Counts the number of set bits in a 64-bit value.
 ///
@@ -64,6 +63,7 @@ pub fn popcount_unit(x: Unit) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::base::WORD_SIZE;
 
     #[test]
     fn test_popcount() {

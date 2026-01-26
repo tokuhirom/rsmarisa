@@ -3,7 +3,6 @@
 //! Extracts and prints all keys stored in a dictionary.
 
 use clap::Parser;
-use marisa::grimoire::io::Reader;
 use marisa::{Agent, Trie};
 use std::io::{self, Write};
 use std::path::PathBuf;

@@ -165,8 +165,8 @@ fn main() {
     } else {
         // Write to stdout (write directly to the writer)
         use marisa::grimoire::io::Writer;
-        let stdout = io::stdout();
-        let mut writer = Writer::new();
+        let _stdout = io::stdout();
+        let _writer = Writer::new();
 
         // Trie::write is internal, use the public API via save to a temp file then copy
         // For now, require -o option

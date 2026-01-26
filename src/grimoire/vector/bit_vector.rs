@@ -9,11 +9,10 @@
 //! - Efficient select queries (find position of nth 0 or 1)
 //! - Space-efficient storage using bit packing
 
-use super::pop_count::{popcount, popcount_u32, popcount_unit, Unit};
+use super::pop_count::{popcount, popcount_unit, Unit};
 use super::rank_index::RankIndex;
 use super::vector::Vector;
-use crate::base::{ErrorCode, WORD_SIZE};
-use crate::grimoire::io::{Mapper, Reader, Writer};
+use crate::base::WORD_SIZE;
 
 #[cfg(target_pointer_width = "32")]
 use super::select_bit::select_bit_u32;

@@ -44,7 +44,8 @@ pub struct LoudsTrie {
     num_l1_nodes: usize,
     /// Configuration.
     config: Config,
-    /// Mapper for memory-mapped access.
+    /// Mapper for memory-mapped access (not yet implemented).
+    #[allow(dead_code)]
     mapper: Mapper<'static>,
 }
 
@@ -191,11 +192,11 @@ impl LoudsTrie {
 
     /// Internal build implementation.
     fn build_(&mut self, keyset: &mut crate::keyset::Keyset, config: &Config) {
-        use crate::grimoire::trie::key::{Key, ReverseKey};
+        use crate::grimoire::trie::key::Key;
         use crate::grimoire::vector::vector::Vector;
 
         // Copy keys from keyset to Vector<Key>
-        let mut keys: Vector<Key> = Vector::new();
+        let mut keys: Vector<Key<'_>> = Vector::new();
         keys.resize(keyset.size(), Key::new());
         for i in 0..keyset.size() {
             let keyset_key = keyset.get(i);
@@ -251,7 +252,7 @@ impl LoudsTrie {
         config: &Config,
         trie_id: usize,
     ) {
-        use crate::grimoire::trie::key::ReverseKey;
+        
 
         self.build_current_trie_key(keys, terminals, config, trie_id);
 
@@ -470,7 +471,7 @@ impl LoudsTrie {
 
         if trie_id == config.num_tries() {
             // Build tail storage
-            let mut entries: Vector<Entry> = Vector::new();
+            let mut entries: Vector<Entry<'_>> = Vector::new();
             entries.resize(keys.size(), Entry::new());
             for i in 0..keys.size() {
                 entries[i].set_str(keys[i].as_bytes());
@@ -491,7 +492,7 @@ impl LoudsTrie {
 
         keys.clear();
 
-        let mut reverse_keys: Vector<ReverseKey> = Vector::new();
+        let mut reverse_keys: Vector<ReverseKey<'_>> = Vector::new();
         for (ptr, weight) in reverse_key_data {
             // SAFETY: The pointer is valid for lifetime 'a (from original keyset)
             let bytes: &[u8] = unsafe { &*ptr };
@@ -738,7 +739,7 @@ impl LoudsTrie {
 
         if trie_id == config.num_tries() {
             // Build tail storage
-            let mut entries: Vector<Entry> = Vector::new();
+            let mut entries: Vector<Entry<'_>> = Vector::new();
             entries.resize(keys.size(), Entry::new());
             for i in 0..keys.size() {
                 entries[i].set_str(keys[i].as_bytes());
@@ -849,7 +850,7 @@ impl LoudsTrie {
     ///
     /// TODO: Implement when BitVector, FlatVector, Tail have proper I/O support
     #[allow(dead_code)]
-    pub fn map(&mut self, _mapper: &mut Mapper) {
+    pub fn map(&mut self, _mapper: &mut Mapper<'_>) {
         // Stub - requires proper I/O support in all components
     }
 
@@ -1091,7 +1092,7 @@ impl LoudsTrie {
                 // Reverse entire key buffer
                 let state = agent.state_mut().expect("Agent must have state");
                 state.key_buf_mut().reverse();
-                drop(state);
+                let _ = state;
 
                 agent.set_key_from_state_buf();
                 agent.set_key_id(key_id);
@@ -1221,7 +1222,7 @@ impl LoudsTrie {
         {
             let state = agent.state().expect("Agent must have state");
             if state.status_code() != StatusCode::ReadyToCommonPrefixSearch {
-                drop(state);
+                let _ = state;
                 let state = agent.state_mut().expect("Agent must have state");
                 state.common_prefix_search_init();
 
@@ -1229,7 +1230,7 @@ impl LoudsTrie {
                 let node_id = state.node_id();
                 if self.terminal_flags.get(node_id) {
                     let query_pos = state.query_pos();
-                    drop(state);
+                    let _ = state;
 
                     let key_id = self.terminal_flags.rank1(node_id);
                     agent.set_key_from_query_prefix(query_pos);
@@ -1297,11 +1298,11 @@ impl LoudsTrie {
         {
             let state = agent.state().expect("Agent must have state");
             if state.status_code() != StatusCode::ReadyToPredictiveSearch {
-                drop(state);
+                let _ = state;
                 let query_len = agent.query().length();
                 let state = agent.state_mut().expect("Agent must have state");
                 state.predictive_search_init();
-                drop(state);
+                let _ = state;
                 while agent.state().expect("Agent must have state").query_pos() < query_len {
                     if !self.predictive_find_child(agent) {
                         agent
@@ -1323,7 +1324,7 @@ impl LoudsTrie {
                 // Check if current node is terminal
                 let node_id = state.node_id();
                 if self.terminal_flags.get(node_id) {
-                    drop(state);
+                    let _ = state;
 
                     agent.set_key_from_state_buf();
                     let key_id = self.terminal_flags.rank1(node_id);
@@ -1378,7 +1379,7 @@ impl LoudsTrie {
                 if self.link_flags.get(next_node_id) {
                     let new_link_id = self.update_link_id(next_link_id, next_node_id);
                     state.history_at_mut(history_pos).set_link_id(new_link_id);
-                    drop(state);
+                    let _ = state;
 
                     self.restore(agent, self.get_link_with_id(next_node_id, new_link_id));
 
@@ -1407,7 +1408,7 @@ impl LoudsTrie {
                         id
                     };
 
-                    drop(state);
+                    let _ = state;
 
                     agent.set_key_from_state_buf();
                     agent.set_key_id(key_id);
@@ -1452,12 +1453,12 @@ impl LoudsTrie {
         if node_id == self.cache[cache_id].parent() {
             use crate::base::INVALID_EXTRA;
             if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
-                drop(state);
+                let _ = state;
                 if !self.prefix_match(agent, self.cache[cache_id].link()) {
                     return false;
                 }
             } else {
-                drop(state);
+                let _ = state;
                 let state = agent.state_mut().expect("Agent must have state");
                 state.key_buf_mut().push(self.cache[cache_id].label());
                 state.set_query_pos(query_pos + 1);
@@ -1476,7 +1477,7 @@ impl LoudsTrie {
         }
 
         let mut current_node = louds_pos - node_id - 1;
-        drop(state);
+        let _ = state;
         agent
             .state_mut()
             .expect("Agent must have state")

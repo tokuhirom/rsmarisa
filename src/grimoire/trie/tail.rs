@@ -100,7 +100,7 @@ impl Tail {
     /// * `mode` - Tail mode (text or binary)
     pub fn build(
         &mut self,
-        entries: &mut Vector<crate::grimoire::trie::entry::Entry>,
+        entries: &mut Vector<crate::grimoire::trie::entry::Entry<'_>>,
         offsets: &mut Vector<u32>,
         mut mode: TailMode,
     ) {
@@ -128,7 +128,7 @@ impl Tail {
     /// Internal build implementation.
     fn build_(
         &mut self,
-        entries: &mut Vector<crate::grimoire::trie::entry::Entry>,
+        entries: &mut Vector<crate::grimoire::trie::entry::Entry<'_>>,
         offsets: &mut Vector<u32>,
         mode: TailMode,
     ) {

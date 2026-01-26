@@ -59,7 +59,7 @@ impl Header {
     /// # Panics
     ///
     /// Panics if the header is invalid (TODO: should return Result)
-    pub fn map(&mut self, _mapper: &mut Mapper) {
+    pub fn map(&mut self, _mapper: &mut Mapper<'_>) {
         // TODO: implement when Mapper is complete
         panic!("Header::map not yet implemented - Mapper interface incomplete");
     }

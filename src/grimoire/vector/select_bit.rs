@@ -5,7 +5,6 @@
 //! This module provides the select_bit function which finds the position
 //! of the i-th set bit within a word.
 
-use super::pop_count::{popcount, popcount_u32};
 use super::select_tables::SELECT_TABLE;
 
 /// Finds the position of the i-th set bit in a 64-bit unit.

@@ -98,7 +98,7 @@ impl Trie {
     ///
     /// TODO: Implement when I/O support is complete
     #[allow(dead_code)]
-    pub fn map(&mut self, _mapper: &mut Mapper) {
+    pub fn map(&mut self, _mapper: &mut Mapper<'_>) {
         // Stub - requires full I/O support
     }
 

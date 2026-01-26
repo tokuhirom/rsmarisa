@@ -215,6 +215,7 @@ impl Agent {
 ///
 /// In predictive search states, the agent's key points into the state's
 /// key buffer. After copying state, we need to update the pointer.
+#[allow(dead_code)]
 fn update_agent_after_copying_state(state: &State, agent: &mut Agent) {
     match state.status_code() {
         StatusCode::ReadyToPredictiveSearch | StatusCode::EndOfPredictiveSearch => {

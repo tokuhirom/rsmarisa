@@ -112,7 +112,7 @@ impl StringComparer {
     /// Compares two entries by their string content.
     ///
     /// Returns true if lhs > rhs (for descending order sorting).
-    pub fn compare(lhs: &Entry, rhs: &Entry) -> bool {
+    pub fn compare(lhs: &Entry<'_>, rhs: &Entry<'_>) -> bool {
         for i in 0..lhs.length() {
             if i == rhs.length() {
                 return true;
@@ -133,7 +133,7 @@ impl IDComparer {
     /// Compares two entries by their ID.
     ///
     /// Returns true if lhs.id < rhs.id (for ascending order sorting).
-    pub fn compare(lhs: &Entry, rhs: &Entry) -> bool {
+    pub fn compare(lhs: &Entry<'_>, rhs: &Entry<'_>) -> bool {
         lhs.id < rhs.id
     }
 }

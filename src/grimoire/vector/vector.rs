@@ -6,7 +6,6 @@
 //! serialization and memory mapping operations.
 
 use crate::grimoire::io::{Mapper, Reader, Writer};
-use std::marker::PhantomData;
 
 /// Generic vector for internal use with serialization support.
 ///
@@ -183,7 +182,7 @@ impl<T: Copy> Vector<T> {
     }
 
     /// Maps the vector from a mapper (stub for now).
-    pub fn map(&mut self, _mapper: &mut Mapper) {
+    pub fn map(&mut self, _mapper: &mut Mapper<'_>) {
         // TODO: implement memory mapping
     }
 

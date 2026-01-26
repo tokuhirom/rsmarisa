@@ -126,8 +126,11 @@ impl MapFlags {
 pub struct NumTries(pub u32);
 
 impl NumTries {
+    /// Minimum number of tries (1).
     pub const MIN: u32 = 0x00001;
+    /// Maximum number of tries (127).
     pub const MAX: u32 = 0x0007F;
+    /// Default number of tries (3).
     pub const DEFAULT: u32 = 0x00003;
 }
 
@@ -186,10 +189,15 @@ impl Default for NodeOrder {
 ///
 /// Ported from: marisa_config_mask enum
 pub mod config_mask {
+    /// Mask for extracting number of tries (bits 0-6).
     pub const NUM_TRIES: u32 = 0x0007F;
+    /// Mask for extracting cache level (bits 7-11).
     pub const CACHE_LEVEL: u32 = 0x00F80;
+    /// Mask for extracting tail mode (bits 12-15).
     pub const TAIL_MODE: u32 = 0x0F000;
+    /// Mask for extracting node order (bits 16-19).
     pub const NODE_ORDER: u32 = 0xF0000;
+    /// Mask for all configuration bits.
     pub const CONFIG: u32 = 0xFFFFF;
 }
 

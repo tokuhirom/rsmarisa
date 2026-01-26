@@ -8,7 +8,6 @@
 
 use super::vector::Vector;
 use crate::base::WORD_SIZE;
-use crate::grimoire::io::{Mapper, Reader, Writer};
 
 #[cfg(target_pointer_width = "64")]
 type Unit = u64;
