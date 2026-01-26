@@ -1,20 +1,31 @@
 [package]
-name = "marisa"
+name = "rsmarisa"
 version = "0.1.0"
 edition = "2021"
 authors = ["rust-marisa contributors"]
 license = "BSD-2-Clause"
-description = "Rust port of marisa-trie: a static and space-efficient trie data structure"
+description = "Pure Rust port of marisa-trie: a static and space-efficient trie data structure"
 repository = "https://github.com/tokuhirom/rust-marisa"
+homepage = "https://github.com/tokuhirom/rust-marisa"
+documentation = "https://docs.rs/rsmarisa"
+readme = "README.md"
 keywords = ["trie", "data-structure", "marisa", "search"]
 categories = ["data-structures", "algorithms"]
 rust-version = "1.70"
+exclude = [
+    "bin/",
+    "tests/cpp_*.cc",
+    ".github/",
+    "CLAUDE.md",
+    "PORTING_STATUS.md",
+    "*.marisa",
+]
 
 [dependencies]
-clap = { version = "4.5", features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3.0"
+clap = { version = "4.5", features = ["derive"] }
 
 [lib]
 name = "marisa"
@@ -29,78 +40,6 @@ required-features = []
 name = "save_load"
 path = "examples/save_load.rs"
 required-features = []
-
-[[bin]]
-name = "binary_compatibility_test"
-path = "bin/binary_compatibility_test.rs"
-
-[[bin]]
-name = "test_sort"
-path = "bin/test_sort.rs"
-
-[[bin]]
-name = "test_key_order"
-path = "bin/test_key_order.rs"
-
-[[bin]]
-name = "test_entry_sort"
-path = "bin/test_entry_sort.rs"
-
-[[bin]]
-name = "test_a_app"
-path = "bin/test_a_app.rs"
-
-[[bin]]
-name = "test_load_cpp"
-path = "bin/test_load_cpp.rs"
-
-[[bin]]
-name = "test_15words_lookup"
-path = "bin/test_15words_lookup.rs"
-
-
-[[bin]]
-name = "simple_15words_test"
-path = "bin/simple_15words_test.rs"
-
-
-[[bin]]
-name = "debug_missing_words"
-path = "bin/debug_missing_words.rs"
-
-
-[[bin]]
-name = "debug_application"
-path = "bin/debug_application.rs"
-
-
-[[bin]]
-name = "find_breaking_point"
-path = "bin/find_breaking_point.rs"
-
-
-[[bin]]
-name = "test_6_vs_7_words"
-path = "bin/test_6_vs_7_words.rs"
-
-
-[[bin]]
-name = "test_rust_7words_lookup"
-path = "bin/test_rust_7words_lookup.rs"
-
-
-[[bin]]
-name = "debug_sort_order"
-path = "bin/debug_sort_order.rs"
-
-
-[[bin]]
-name = "test_string_comparer"
-path = "bin/test_string_comparer.rs"
-
-[[bin]]
-name = "test_reverse_lookup"
-path = "bin/test_reverse_lookup.rs"
 
 # CLI Tools
 [[bin]]

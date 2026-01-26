@@ -1,15 +1,21 @@
 # rust-marisa
 
 [![CI](https://github.com/tokuhirom/rust-marisa/actions/workflows/ci.yml/badge.svg)](https://github.com/tokuhirom/rust-marisa/actions/workflows/ci.yml)
-[![Crates.io](https://img.shields.io/crates/v/marisa.svg)](https://crates.io/crates/marisa)
-[![Documentation](https://docs.rs/marisa/badge.svg)](https://docs.rs/marisa)
+[![Crates.io](https://img.shields.io/crates/v/rsmarisa.svg)](https://crates.io/crates/rsmarisa)
+[![Documentation](https://docs.rs/rsmarisa/badge.svg)](https://docs.rs/rsmarisa)
 [![License](https://img.shields.io/badge/license-BSD--2--Clause-blue.svg)](LICENSE)
 
-Rust port of [marisa-trie](https://github.com/s-yata/marisa-trie), a static and space-efficient trie data structure.
+Pure Rust port of [marisa-trie](https://github.com/s-yata/marisa-trie), a static and space-efficient trie data structure.
 
 ## About
 
-MARISA (Matching Algorithm with Recursively Implemented StorAge) is a static and space-efficient trie data structure. This Rust implementation aims to maintain compatibility with the original C++ implementation while leveraging Rust's safety features.
+MARISA (Matching Algorithm with Recursively Implemented StorAge) is a static and space-efficient trie data structure. This is a **pure Rust** implementation (no C++ dependencies) that maintains full binary compatibility with the original C++ marisa-trie while leveraging Rust's safety features.
+
+**Why rsmarisa?**
+- Pure Rust implementation - no C++ dependencies or FFI overhead
+- Binary compatible with C++ marisa-trie (can read/write the same files)
+- Memory safe with comprehensive test coverage (314 tests)
+- Identical behavior to the original C++ library
 
 ## Features
 
@@ -27,7 +33,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-marisa = "0.1"
+rsmarisa = "0.1"
 ```
 
 ### Basic Usage
