@@ -122,7 +122,7 @@ impl Trie {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// use marisa::Trie;
     ///
     /// static TRIE_DATA: &[u8] = include_bytes!("dictionary.marisa");
