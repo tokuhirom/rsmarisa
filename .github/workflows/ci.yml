@@ -43,11 +43,11 @@ jobs:
           mkdir -p build && cd build
           cmake ..
           make
-          sudo cp tools/marisa-build /usr/local/bin/
-          sudo cp tools/marisa-lookup /usr/local/bin/
-          sudo cp tools/marisa-reverse-lookup /usr/local/bin/
-          sudo cp tools/marisa-common-prefix-search /usr/local/bin/
-          sudo cp tools/marisa-predictive-search /usr/local/bin/
+          sudo cp marisa-build /usr/local/bin/
+          sudo cp marisa-lookup /usr/local/bin/
+          sudo cp marisa-reverse-lookup /usr/local/bin/
+          sudo cp marisa-common-prefix-search /usr/local/bin/
+          sudo cp marisa-predictive-search /usr/local/bin/
           sudo cp libmarisa.a /usr/local/lib/
           sudo ldconfig
 
