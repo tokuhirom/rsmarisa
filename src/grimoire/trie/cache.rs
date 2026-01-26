@@ -268,6 +268,7 @@ mod tests {
     #[test]
     fn test_cache_base_all_bits() {
         let mut cache = Cache::new();
+        cache.set_extra(0); // Initialize extra to 0 first
         cache.set_base(0xFF);
 
         assert_eq!(cache.base(), 0xFF);
