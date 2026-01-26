@@ -38,6 +38,24 @@ jobs:
             exit 1
           fi
 
+      - name: Install C++ marisa-trie tools (for CLI compatibility tests)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+          git clone https://github.com/s-yata/marisa-trie.git /tmp/marisa-trie
+          cd /tmp/marisa-trie
+          git checkout 4ef33cc5a2b6b4f5e147e4564a5236e163d67982
+          mkdir -p build && cd build
+          cmake ..
+          make
+          sudo cp marisa-build /usr/local/bin/
+          sudo cp marisa-lookup /usr/local/bin/
+          sudo cp marisa-reverse-lookup /usr/local/bin/
+          sudo cp marisa-common-prefix-search /usr/local/bin/
+          sudo cp marisa-predictive-search /usr/local/bin/
+          sudo cp libmarisa.a /usr/local/lib/
+          sudo ldconfig
+
       - name: Build release binaries
         run: cargo build --release --bins
 
