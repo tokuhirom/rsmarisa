@@ -13,7 +13,7 @@ keywords = ["trie", "data-structure", "marisa", "search"]
 categories = ["data-structures", "algorithms"]
 rust-version = "1.70"
 exclude = [
-    "bin/",
+    "bin/*.rs",
     "tests/cpp_*.cc",
     ".github/",
     "CLAUDE.md",
