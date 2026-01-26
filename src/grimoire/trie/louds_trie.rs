@@ -258,8 +258,7 @@ impl LoudsTrie {
         }
 
         // Configure based on what was built
-        if self.next_trie.is_some() {
-            let next = self.next_trie.as_ref().unwrap();
+        if let Some(next) = &self.next_trie {
             let flags = ((next.num_tries() + 1) as i32)
                 | (next.tail_mode() as i32)
                 | (next.node_order() as i32);
@@ -523,8 +522,7 @@ impl LoudsTrie {
         }
 
         // Configure based on what was built
-        if self.next_trie.is_some() {
-            let next = self.next_trie.as_ref().unwrap();
+        if let Some(next) = &self.next_trie {
             let flags = ((next.num_tries() + 1) as i32)
                 | (next.tail_mode() as i32)
                 | (next.node_order() as i32);
