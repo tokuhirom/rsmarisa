@@ -6,7 +6,6 @@
 //! Rust's standard library provides hardware-accelerated implementations
 //! via count_ones(), which compiles to POPCNT instruction when available.
 
-
 /// Counts the number of set bits in a 64-bit value.
 ///
 /// This function uses Rust's built-in count_ones() which is optimized

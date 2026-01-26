@@ -3,9 +3,7 @@ use marisa::trie::Trie;
 
 fn main() {
     // Test 6 words (works)
-    let words_6 = vec![
-        "a", "app", "apple", "application", "apply", "banana"
-    ];
+    let words_6 = vec!["a", "app", "apple", "application", "apply", "banana"];
 
     let mut keyset = Keyset::new();
     for word in &words_6 {
@@ -23,7 +21,13 @@ fn main() {
 
     // Test 7 words (fails)
     let words_7 = vec![
-        "a", "app", "apple", "application", "apply", "banana", "band"
+        "a",
+        "app",
+        "apple",
+        "application",
+        "apply",
+        "banana",
+        "band",
     ];
 
     let mut keyset = Keyset::new();

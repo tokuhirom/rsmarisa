@@ -3,9 +3,9 @@
 //! Verifies that rsmarisa-build and rsmarisa-lookup produce
 //! results identical to C++ marisa-trie tools.
 
-use std::process::Command;
 use std::fs;
 use std::io::Write;
+use std::process::Command;
 use tempfile::NamedTempFile;
 
 #[test]
@@ -27,7 +27,10 @@ fn test_rsmarisa_build_binary_compatibility() {
         .write_all(test_keys.as_bytes())
         .and_then(|_| Ok(()));
 
-    assert!(rust_output.is_ok(), "Failed to write to rsmarisa-build stdin");
+    assert!(
+        rust_output.is_ok(),
+        "Failed to write to rsmarisa-build stdin"
+    );
 
     // Build with C++ tool
     let mut cpp_dict = NamedTempFile::new().unwrap();
@@ -59,8 +62,7 @@ fn test_rsmarisa_build_binary_compatibility() {
     );
 
     assert_eq!(
-        rust_bytes,
-        cpp_bytes,
+        rust_bytes, cpp_bytes,
         "Dictionary files are not byte-for-byte identical"
     );
 }
@@ -102,7 +104,12 @@ fn test_rsmarisa_lookup_compatibility() {
         .spawn()
         .unwrap();
 
-    rust_child.stdin.take().unwrap().write_all(queries.as_bytes()).unwrap();
+    rust_child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(queries.as_bytes())
+        .unwrap();
     let rust_result = rust_child.wait_with_output().unwrap();
     let rust_stdout = String::from_utf8(rust_result.stdout).unwrap();
 
@@ -114,13 +121,17 @@ fn test_rsmarisa_lookup_compatibility() {
         .spawn()
         .unwrap();
 
-    cpp_child.stdin.take().unwrap().write_all(queries.as_bytes()).unwrap();
+    cpp_child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(queries.as_bytes())
+        .unwrap();
     let cpp_result = cpp_child.wait_with_output().unwrap();
     let cpp_stdout = String::from_utf8(cpp_result.stdout).unwrap();
 
     assert_eq!(
-        rust_stdout,
-        cpp_stdout,
+        rust_stdout, cpp_stdout,
         "Lookup results differ between Rust and C++ implementations"
     );
 }
@@ -156,7 +167,12 @@ fn test_rsmarisa_common_prefix_search_compatibility() {
         .spawn()
         .unwrap();
 
-    rust_child.stdin.take().unwrap().write_all(query.as_bytes()).unwrap();
+    rust_child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(query.as_bytes())
+        .unwrap();
     let rust_result = rust_child.wait_with_output().unwrap();
     let rust_stdout = String::from_utf8(rust_result.stdout).unwrap();
 
@@ -168,13 +184,17 @@ fn test_rsmarisa_common_prefix_search_compatibility() {
         .spawn()
         .unwrap();
 
-    cpp_child.stdin.take().unwrap().write_all(query.as_bytes()).unwrap();
+    cpp_child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(query.as_bytes())
+        .unwrap();
     let cpp_result = cpp_child.wait_with_output().unwrap();
     let cpp_stdout = String::from_utf8(cpp_result.stdout).unwrap();
 
     assert_eq!(
-        rust_stdout,
-        cpp_stdout,
+        rust_stdout, cpp_stdout,
         "Common prefix search results differ between Rust and C++ implementations"
     );
 }
@@ -210,7 +230,12 @@ fn test_rsmarisa_predictive_search_compatibility() {
         .spawn()
         .unwrap();
 
-    rust_child.stdin.take().unwrap().write_all(query.as_bytes()).unwrap();
+    rust_child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(query.as_bytes())
+        .unwrap();
     let rust_result = rust_child.wait_with_output().unwrap();
     let rust_stdout = String::from_utf8(rust_result.stdout).unwrap();
 
@@ -222,13 +247,17 @@ fn test_rsmarisa_predictive_search_compatibility() {
         .spawn()
         .unwrap();
 
-    cpp_child.stdin.take().unwrap().write_all(query.as_bytes()).unwrap();
+    cpp_child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(query.as_bytes())
+        .unwrap();
     let cpp_result = cpp_child.wait_with_output().unwrap();
     let cpp_stdout = String::from_utf8(cpp_result.stdout).unwrap();
 
     assert_eq!(
-        rust_stdout,
-        cpp_stdout,
+        rust_stdout, cpp_stdout,
         "Predictive search results differ between Rust and C++ implementations"
     );
 }
@@ -264,7 +293,12 @@ fn test_rsmarisa_reverse_lookup_compatibility() {
         .spawn()
         .unwrap();
 
-    rust_child.stdin.take().unwrap().write_all(queries.as_bytes()).unwrap();
+    rust_child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(queries.as_bytes())
+        .unwrap();
     let rust_result = rust_child.wait_with_output().unwrap();
     let rust_stdout = String::from_utf8(rust_result.stdout).unwrap();
 
@@ -276,13 +310,17 @@ fn test_rsmarisa_reverse_lookup_compatibility() {
         .spawn()
         .unwrap();
 
-    cpp_child.stdin.take().unwrap().write_all(queries.as_bytes()).unwrap();
+    cpp_child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(queries.as_bytes())
+        .unwrap();
     let cpp_result = cpp_child.wait_with_output().unwrap();
     let cpp_stdout = String::from_utf8(cpp_result.stdout).unwrap();
 
     assert_eq!(
-        rust_stdout,
-        cpp_stdout,
+        rust_stdout, cpp_stdout,
         "Reverse lookup results differ between Rust and C++ implementations"
     );
 }

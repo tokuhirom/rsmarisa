@@ -3,7 +3,13 @@ use marisa::grimoire::vector::vector::Vector;
 
 fn main() {
     let words = vec![
-        "a", "app", "apple", "application", "apply", "banana", "band"
+        "a",
+        "app",
+        "apple",
+        "application",
+        "apply",
+        "banana",
+        "band",
     ];
 
     let mut entries: Vector<Entry> = Vector::new();
@@ -17,7 +23,11 @@ fn main() {
     println!("Before sort:");
     for i in 0..entries.size() {
         let e = entries[i];
-        print!("  {} ({} chars): ", std::str::from_utf8(e.as_bytes()).unwrap(), e.length());
+        print!(
+            "  {} ({} chars): ",
+            std::str::from_utf8(e.as_bytes()).unwrap(),
+            e.length()
+        );
         for j in 0..e.length() {
             print!("{}", e.get(j) as char);
         }
@@ -36,7 +46,12 @@ fn main() {
     println!("\nAfter sort:");
     for i in 0..entries.size() {
         let e = entries[i];
-        print!("  {} (id={}, {} chars): ", std::str::from_utf8(e.as_bytes()).unwrap(), e.id(), e.length());
+        print!(
+            "  {} (id={}, {} chars): ",
+            std::str::from_utf8(e.as_bytes()).unwrap(),
+            e.id(),
+            e.length()
+        );
         for j in 0..e.length() {
             print!("{}", e.get(j) as char);
         }

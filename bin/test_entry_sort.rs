@@ -77,8 +77,21 @@ fn main() {
 
     println!("Expected order (from C++ marisa-trie):");
     let expected = vec![
-        "a", "app", "banana", "band", "bank", "test", "trie",
-        "can", "cat", "dog", "door", "testing", "apple", "application", "apply"
+        "a",
+        "app",
+        "banana",
+        "band",
+        "bank",
+        "test",
+        "trie",
+        "can",
+        "cat",
+        "dog",
+        "door",
+        "testing",
+        "apple",
+        "application",
+        "apply",
     ];
     for (i, word) in expected.iter().enumerate() {
         println!("  {:2}: {}", i, word);

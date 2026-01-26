@@ -159,7 +159,11 @@ fn main() {
     // Save or write to stdout
     if let Some(output_path) = args.output {
         if let Err(e) = trie.save(output_path.to_str().unwrap()) {
-            eprintln!("error: failed to save dictionary to {}: {}", output_path.display(), e);
+            eprintln!(
+                "error: failed to save dictionary to {}: {}",
+                output_path.display(),
+                e
+            );
             process::exit(30);
         }
     } else {

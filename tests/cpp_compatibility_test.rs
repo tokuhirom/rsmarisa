@@ -91,8 +91,21 @@ fn test_key_id_assignment_matches_cpp() {
 
     // Verify reverse lookup produces the expected order
     let expected_reverse_order = vec![
-        "a", "app", "banana", "band", "bank", "test", "trie",
-        "can", "cat", "dog", "door", "testing", "apple", "application", "apply",
+        "a",
+        "app",
+        "banana",
+        "band",
+        "bank",
+        "test",
+        "trie",
+        "can",
+        "cat",
+        "dog",
+        "door",
+        "testing",
+        "apple",
+        "application",
+        "apply",
     ];
 
     for (key_id, expected_word) in expected_reverse_order.iter().enumerate() {

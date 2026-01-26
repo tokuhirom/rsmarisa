@@ -334,10 +334,10 @@ impl Tail {
                 // Access buf[offset + (query_pos - initial_query_pos)]
                 let buf_index = offset + (query_pos - initial_query_pos);
                 if buf_index >= self.buf.size() {
-                    return false;  // Unexpected end of buffer
+                    return false; // Unexpected end of buffer
                 }
                 if self.buf[buf_index] != query_bytes[query_pos] {
-                    return false;  // Mismatch
+                    return false; // Mismatch
                 }
                 query_pos += 1;
                 agent
@@ -347,14 +347,14 @@ impl Tail {
 
                 let buf_index = offset + (query_pos - initial_query_pos);
                 if buf_index >= self.buf.size() {
-                    return false;  // Unexpected end of buffer
+                    return false; // Unexpected end of buffer
                 }
                 if self.buf[buf_index] == 0 {
-                    return true;  // Found null terminator
+                    return true; // Found null terminator
                 }
 
                 if query_pos >= query_bytes.len() {
-                    return false;  // Query exhausted but no null terminator
+                    return false; // Query exhausted but no null terminator
                 }
             }
         } else {

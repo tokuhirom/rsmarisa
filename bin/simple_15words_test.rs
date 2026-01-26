@@ -1,12 +1,24 @@
+use marisa::agent::Agent;
 use marisa::keyset::Keyset;
 use marisa::trie::Trie;
-use marisa::agent::Agent;
 
 fn main() {
     let words = vec![
-        "a", "app", "apple", "application", "apply",
-        "banana", "band", "bank", "can", "cat",
-        "dog", "door", "test", "testing", "trie",
+        "a",
+        "app",
+        "apple",
+        "application",
+        "apply",
+        "banana",
+        "band",
+        "bank",
+        "can",
+        "cat",
+        "dog",
+        "door",
+        "test",
+        "testing",
+        "trie",
     ];
 
     // Build trie

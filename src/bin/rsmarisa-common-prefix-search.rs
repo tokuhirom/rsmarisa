@@ -39,7 +39,11 @@ fn main() {
     // Load dictionary
     let mut trie = Trie::new();
     if let Err(e) = trie.load(args.dictionary.to_str().unwrap()) {
-        eprintln!("error: failed to load dictionary from {}: {}", args.dictionary.display(), e);
+        eprintln!(
+            "error: failed to load dictionary from {}: {}",
+            args.dictionary.display(),
+            e
+        );
         process::exit(20);
     }
 

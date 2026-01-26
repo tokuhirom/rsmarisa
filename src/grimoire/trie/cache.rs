@@ -23,7 +23,9 @@ impl Default for LinkOrWeight {
         // Match C++ initialization: weight = FLT_MIN
         // C++'s FLT_MIN is the smallest positive normalized value, not the most negative
         // This is important for binary compatibility
-        LinkOrWeight { weight: f32::MIN_POSITIVE }
+        LinkOrWeight {
+            weight: f32::MIN_POSITIVE,
+        }
     }
 }
 
@@ -31,7 +33,13 @@ impl Default for LinkOrWeight {
 impl std::fmt::Debug for LinkOrWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // We don't know which variant is active, so just show the raw bits
-        unsafe { write!(f, "LinkOrWeight(link={}, weight={})", self.link, self.weight) }
+        unsafe {
+            write!(
+                f,
+                "LinkOrWeight(link={}, weight={})",
+                self.link, self.weight
+            )
+        }
     }
 }
 

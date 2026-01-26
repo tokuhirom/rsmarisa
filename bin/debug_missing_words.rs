@@ -1,6 +1,6 @@
+use marisa::agent::Agent;
 use marisa::keyset::Keyset;
 use marisa::trie::Trie;
-use marisa::agent::Agent;
 
 fn main() {
     // Test just the failing words
@@ -9,8 +9,8 @@ fn main() {
         vec!["banana"],
         vec!["band"],
         vec!["bank"],
-        vec!["app", "application"],  // Test with prefix
-        vec!["ban", "banana", "band", "bank"],  // Test all ban* words
+        vec!["app", "application"],            // Test with prefix
+        vec!["ban", "banana", "band", "bank"], // Test all ban* words
     ];
 
     for (i, words) in test_sets.iter().enumerate() {

@@ -87,14 +87,19 @@ fn test_binary_compatibility_with_cpp() {
             // Show first difference
             for (i, (r, c)) in rust_data.iter().zip(cpp_data.iter()).enumerate() {
                 if r != c {
-                    println!("First difference at byte {}: Rust=0x{:02x}, C++=0x{:02x}", i, r, c);
+                    println!(
+                        "First difference at byte {}: Rust=0x{:02x}, C++=0x{:02x}",
+                        i, r, c
+                    );
                     break;
                 }
             }
 
             if rust_data.len() != cpp_data.len() {
-                println!("Length difference: {} bytes",
-                    (rust_data.len() as i64 - cpp_data.len() as i64).abs());
+                println!(
+                    "Length difference: {} bytes",
+                    (rust_data.len() as i64 - cpp_data.len() as i64).abs()
+                );
             }
 
             panic!("Binary compatibility test failed");

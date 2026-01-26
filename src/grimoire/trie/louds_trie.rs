@@ -252,8 +252,6 @@ impl LoudsTrie {
         config: &Config,
         trie_id: usize,
     ) {
-        
-
         self.build_current_trie_key(keys, terminals, config, trie_id);
 
         let mut next_terminals: Vector<u32> = Vector::new();

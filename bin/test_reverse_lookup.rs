@@ -2,7 +2,15 @@ use marisa::{Agent, Keyset, Trie};
 
 fn main() {
     // Build a simple trie
-    let keys = vec!["a", "app", "apple", "application", "apply", "banana", "band"];
+    let keys = vec![
+        "a",
+        "app",
+        "apple",
+        "application",
+        "apply",
+        "banana",
+        "band",
+    ];
     let mut keyset = Keyset::new();
     for key in &keys {
         keyset.push_back_str(key).unwrap();
@@ -39,7 +47,10 @@ fn main() {
         match std::str::from_utf8(restored_bytes) {
             Ok(restored_key) => {
                 if restored_key != *key {
-                    println!("ID {}: ✗ MISMATCH! expected '{}', got '{}'", id, key, restored_key);
+                    println!(
+                        "ID {}: ✗ MISMATCH! expected '{}', got '{}'",
+                        id, key, restored_key
+                    );
                     all_ok = false;
                 } else {
                     println!("ID {}: ✓ OK '{}'", id, restored_key);
