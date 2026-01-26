@@ -114,8 +114,8 @@ jobs:
       - name: Build C++ test binary
         run: |
           cd /tmp/marisa-trie/build
-          g++ -o /tmp/cpp_test ${{ github.workspace }}/tests/cpp_binary_test.cc -I../include -L./lib -lmarisa -std=c++17
-          LD_LIBRARY_PATH=/tmp/marisa-trie/build/lib /tmp/cpp_test /tmp/cpp_output.marisa
+          g++ -o /tmp/cpp_test ${{ github.workspace }}/tests/cpp_binary_test.cc -I/usr/local/include -L/usr/local/lib -lmarisa -std=c++17
+          /tmp/cpp_test /tmp/cpp_output.marisa
 
       - name: Build Rust test binary
         run: |
