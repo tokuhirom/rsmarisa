@@ -48,7 +48,7 @@ jobs:
           sudo cp tools/marisa-reverse-lookup /usr/local/bin/
           sudo cp tools/marisa-common-prefix-search /usr/local/bin/
           sudo cp tools/marisa-predictive-search /usr/local/bin/
-          sudo cp lib/libmarisa.a /usr/local/lib/
+          sudo cp libmarisa.a /usr/local/lib/
           sudo ldconfig
 
       - name: Build release binaries (for CLI tool tests)
@@ -135,8 +135,8 @@ jobs:
       - name: Build C++ test binary
         run: |
           cd /tmp/marisa-trie/build
-          g++ -o /tmp/cpp_test ${{ github.workspace }}/tests/cpp_binary_test.cc -I../include -L./lib -lmarisa -std=c++17
-          LD_LIBRARY_PATH=/tmp/marisa-trie/build/lib /tmp/cpp_test /tmp/cpp_output.marisa
+          g++ -o /tmp/cpp_test ${{ github.workspace }}/tests/cpp_binary_test.cc -I../include -L. -lmarisa -std=c++17
+          /tmp/cpp_test /tmp/cpp_output.marisa
 
       - name: Build Rust test binary
         run: |
