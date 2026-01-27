@@ -31,7 +31,7 @@ memmap2 = "0.9"
 tempfile = "3.0"
 
 [lib]
-name = "marisa"
+name = "rsmarisa"
 path = "src/lib.rs"
 
 [[example]]

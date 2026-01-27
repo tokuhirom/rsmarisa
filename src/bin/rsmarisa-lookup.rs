@@ -3,7 +3,7 @@
 //! Reads queries from standard input and looks them up in the dictionary.
 
 use clap::Parser;
-use marisa::{Agent, Trie};
+use rsmarisa::{Agent, Trie};
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::process;

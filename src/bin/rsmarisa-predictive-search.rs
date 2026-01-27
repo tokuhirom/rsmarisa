@@ -3,7 +3,7 @@
 //! For each query, finds all keys that start with the query.
 
 use clap::Parser;
-use marisa::{Agent, Keyset, Trie};
+use rsmarisa::{Agent, Keyset, Trie};
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::process;

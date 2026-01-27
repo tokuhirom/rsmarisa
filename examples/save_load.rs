@@ -3,7 +3,7 @@
 //! This example demonstrates how to save a trie to a file and load it back,
 //! showing the binary serialization capabilities of rust-marisa.
 
-use marisa::{Agent, Keyset, Trie};
+use rsmarisa::{Agent, Keyset, Trie};
 use std::fs;
 
 fn main() {

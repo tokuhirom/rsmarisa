@@ -41,7 +41,7 @@ rsmarisa = "0.2"
 ### Basic Usage
 
 ```rust
-use marisa::{Trie, Keyset, Agent};
+use rsmarisa::{Trie, Keyset, Agent};
 
 // Build a trie
 let mut keyset = Keyset::new();
@@ -69,7 +69,7 @@ while trie.common_prefix_search(&mut agent) {
 ### Save and Load
 
 ```rust
-use marisa::{Trie, Keyset};
+use rsmarisa::{Trie, Keyset};
 
 // Build and save
 let mut keyset = Keyset::new();
@@ -90,7 +90,7 @@ loaded_trie.load("dictionary.marisa").unwrap();
 For efficient loading of large dictionaries (instant startup, zero-copy):
 
 ```rust
-use marisa::Trie;
+use rsmarisa::Trie;
 
 // Memory-map from file (recommended for large dictionaries)
 let mut trie = Trie::new();
