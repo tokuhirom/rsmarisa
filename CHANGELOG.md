@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.0](https://github.com/tokuhirom/rsmarisa/compare/v0.1.0...v0.2.0) - 2026-01-27
+- docs: add branch protection and PR workflow information by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/1
+- feat: add tagpr for automated release management by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/2
+- feat: add memory-mapped I/O support using memmap2 by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/3
+- Update tagpr.yml by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/4
+
 ## [Unreleased]
 
 ## [0.1.0] - 2026-01-26
