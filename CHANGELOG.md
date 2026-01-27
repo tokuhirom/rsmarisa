@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.1](https://github.com/tokuhirom/rsmarisa/compare/v0.2.0...v0.2.1) - 2026-01-27
+- docs: update README with memory-mapped I/O feature by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/6
+- fix: align library name with package name (marisa -> rsmarisa) by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/8
+- docs: document library name change and migration guide by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/9
+
 ## [v0.2.0](https://github.com/tokuhirom/rsmarisa/compare/v0.1.0...v0.2.0) - 2026-01-27
 - docs: add branch protection and PR workflow information by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/1
 - feat: add tagpr for automated release management by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/2
