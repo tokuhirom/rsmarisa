@@ -14,8 +14,9 @@ MARISA (Matching Algorithm with Recursively Implemented StorAge) is a static and
 **Why rsmarisa?**
 - Pure Rust implementation - no C++ dependencies or FFI overhead
 - Binary compatible with C++ marisa-trie (can read/write the same files)
-- Memory safe with comprehensive test coverage (314 tests)
+- Memory safe with comprehensive test coverage (321 tests)
 - Identical behavior to the original C++ library
+- Memory-mapped I/O support for efficient loading of large dictionaries
 
 ## Features
 
@@ -25,6 +26,7 @@ MARISA (Matching Algorithm with Recursively Implemented StorAge) is a static and
 - **Predictive search**: Find keys starting with a given string
 - **Space-efficient**: Compressed trie structure with LOUDS encoding
 - **Binary I/O**: Save and load tries to/from files
+- **Memory-mapped I/O**: Efficient loading with zero-copy memory mapping
 - **Full binary compatibility**: Rust-built tries are byte-for-byte identical to C++-built tries
 
 ## Quick Start
@@ -33,7 +35,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rsmarisa = "0.1"
+rsmarisa = "0.2"
 ```
 
 ### Basic Usage
@@ -83,6 +85,30 @@ let mut loaded_trie = Trie::new();
 loaded_trie.load("dictionary.marisa").unwrap();
 ```
 
+### Memory-Mapped I/O
+
+For efficient loading of large dictionaries (instant startup, zero-copy):
+
+```rust
+use marisa::Trie;
+
+// Memory-map from file (recommended for large dictionaries)
+let mut trie = Trie::new();
+trie.mmap("dictionary.marisa").unwrap();
+
+// Or embed dictionary data in the binary
+static DICT_DATA: &[u8] = include_bytes!("dictionary.marisa");
+let mut trie = Trie::new();
+trie.map(DICT_DATA).unwrap();
+```
+
+**When to use `mmap()` vs `load()`:**
+- **Large dictionaries (>100MB)**: Use `mmap()` for O(1) startup time
+- **Small dictionaries (<1MB)**: Use `load()` for simplicity
+- **Embedded data**: Use `map()` with `include_bytes!()`
+
+Both methods produce identical behavior and support the same operations.
+
 ## Examples
 
 Run the included examples:
@@ -99,12 +125,13 @@ cargo run --example save_load
 
 ✅ **Production ready!** Core functionality is complete with full binary compatibility and all CLI tools working.
 
-✅ **Recently Fixed (2026-01-26):**
-- **reverse_lookup() and predictive_search() use-after-free bugs**: Fixed memory safety issues where keys were set using dangling pointers to freed temporary buffers. Now properly uses `set_key_from_state_buf()` to point to the agent's state buffer.
-- **7+ keys lookup bug**: Fixed ReverseKey substring extraction in tail building that caused lookup failures for tries with 7 or more keys. The bug was in `build_current_trie_reverse()` where reverse indices were incorrectly used to slice forward bytes.
-- **Tail sort order**: Corrected entry sorting to use ascending order (matching C++ behavior)
-- **Binary compatibility**: Rust-built tries are now byte-for-byte identical to C++-built tries
-- **Multi-trie query_pos sync**: Fixed query position synchronization in `match_()` after `match_link()` and `tail.match_tail()` calls
+**Latest Updates (v0.2.0 - 2026-01-27):**
+- ✅ **Memory-mapped I/O**: Added `Trie::mmap()` for efficient zero-copy loading of large dictionaries
+- ✅ **Instant startup**: O(1) load time for large dictionaries using memory mapping
+- ✅ **Static memory support**: `Trie::map()` for embedding dictionary data in binaries
+- ✅ **Binary compatibility**: Both `mmap()` and `load()` work with C++-created files
+
+See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ### What's Implemented
 
@@ -112,8 +139,9 @@ cargo run --example save_load
 - ✅ **Lookup operations** - Exact string matching
 - ✅ **Common prefix search** - Find all prefixes of a string
 - ✅ **Binary I/O** - Save/load with C++ marisa-trie compatibility
+- ✅ **Memory-mapped I/O** - Efficient zero-copy loading
 - ✅ **File format validation** - "We love Marisa." header check
-- ✅ **314 comprehensive tests** - All passing ✅
+- ✅ **321 comprehensive tests** - All passing ✅
 
 ### Compatibility
 
@@ -124,7 +152,7 @@ cargo run --example save_load
 | C++ file reading | ✅ | Can read files from C++ marisa-trie |
 | C++ file writing | ✅ | C++ can read Rust-built files |
 | Cross-verification | ✅ | Verified with `cmp` and `marisa-lookup` |
-| Memory-mapped I/O | ⏳ | Pending Mapper implementation |
+| Memory-mapped I/O | ✅ | Implemented using memmap2 |
 
 ### Testing
 
