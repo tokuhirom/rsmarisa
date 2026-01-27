@@ -1,6 +1,6 @@
 //! Debug tool to show sizes of trie components
 
-use marisa::{Keyset, Trie};
+use rsmarisa::{Keyset, Trie};
 
 fn main() {
     let mut keyset = Keyset::new();

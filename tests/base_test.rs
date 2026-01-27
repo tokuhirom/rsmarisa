@@ -2,7 +2,7 @@
 //!
 //! Ported from: tests/base-test.cc
 
-use marisa::base::*;
+use rsmarisa::base::*;
 
 #[test]
 #[allow(clippy::assertions_on_constants)]

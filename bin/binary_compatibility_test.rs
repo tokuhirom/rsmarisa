@@ -2,7 +2,7 @@
 //!
 //! This test creates a binary file that can be compared with C++ marisa-trie output
 
-use marisa::{Keyset, Trie};
+use rsmarisa::{Keyset, Trie};
 use std::env;
 use std::fs;
 

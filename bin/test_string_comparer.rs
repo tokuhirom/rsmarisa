@@ -1,4 +1,4 @@
-use marisa::grimoire::trie::entry::{Entry, StringComparer};
+use rsmarisa::grimoire::trie::entry::{Entry, StringComparer};
 
 fn main() {
     let mut a = Entry::new();

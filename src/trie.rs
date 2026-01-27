@@ -23,7 +23,7 @@ use crate::keyset::Keyset;
 /// # Examples
 ///
 /// ```
-/// use marisa::{Trie, Keyset};
+/// use rsmarisa::{Trie, Keyset};
 ///
 /// // Build a trie
 /// let mut keyset = Keyset::new();
@@ -63,7 +63,7 @@ impl Trie {
     /// # Examples
     ///
     /// ```
-    /// use marisa::{Trie, Keyset};
+    /// use rsmarisa::{Trie, Keyset};
     ///
     /// let mut keyset = Keyset::new();
     /// keyset.push_back_str("hello");
@@ -95,7 +95,7 @@ impl Trie {
     /// # Examples
     ///
     /// ```no_run
-    /// use marisa::Trie;
+    /// use rsmarisa::Trie;
     ///
     /// let mut trie = Trie::new();
     /// trie.mmap("dictionary.marisa").unwrap();
@@ -123,7 +123,7 @@ impl Trie {
     /// # Examples
     ///
     /// ```ignore
-    /// use marisa::Trie;
+    /// use rsmarisa::Trie;
     ///
     /// static TRIE_DATA: &[u8] = include_bytes!("dictionary.marisa");
     ///
@@ -225,7 +225,7 @@ impl Trie {
     /// # Examples
     ///
     /// ```
-    /// use marisa::{Trie, Keyset, Agent};
+    /// use rsmarisa::{Trie, Keyset, Agent};
     ///
     /// let mut keyset = Keyset::new();
     /// keyset.push_back_str("apple");
@@ -263,7 +263,7 @@ impl Trie {
     /// # Examples
     ///
     /// ```
-    /// use marisa::{Trie, Keyset, Agent};
+    /// use rsmarisa::{Trie, Keyset, Agent};
     ///
     /// let mut keyset = Keyset::new();
     /// keyset.push_back_str("apple");
@@ -307,7 +307,7 @@ impl Trie {
     /// # Examples
     ///
     /// ```
-    /// use marisa::{Trie, Keyset, Agent};
+    /// use rsmarisa::{Trie, Keyset, Agent};
     ///
     /// let mut keyset = Keyset::new();
     /// keyset.push_back_str("app");
@@ -355,7 +355,7 @@ impl Trie {
     /// # Examples
     ///
     /// ```
-    /// use marisa::{Trie, Keyset, Agent};
+    /// use rsmarisa::{Trie, Keyset, Agent};
     ///
     /// let mut keyset = Keyset::new();
     /// keyset.push_back_str("apple");

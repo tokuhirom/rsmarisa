@@ -3,7 +3,7 @@
 //! This example demonstrates basic trie operations including building,
 //! searching, and querying trie statistics.
 
-use marisa::{Agent, Keyset, Trie};
+use rsmarisa::{Agent, Keyset, Trie};
 
 fn main() {
     println!("=== rust-marisa - Basic Usage Example ===\n");

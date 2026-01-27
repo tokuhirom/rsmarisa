@@ -3,7 +3,7 @@
 
 #[test]
 fn test_simple_trie_structure() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     // Start with a minimal set of words that should all be findable
     let words = vec!["a", "app", "apple"];
@@ -48,7 +48,7 @@ fn test_simple_trie_structure() {
 
 #[test]
 fn test_problematic_words() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     // Test the words that were not being found
     let words = vec!["application", "banana", "band", "bank"];
@@ -82,7 +82,7 @@ fn test_problematic_words() {
 
 #[test]
 fn test_pairs_that_share_prefix() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     // Test words that share prefixes
     let test_cases = vec![

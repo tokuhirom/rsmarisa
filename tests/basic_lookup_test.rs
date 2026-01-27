@@ -2,7 +2,7 @@
 
 #[test]
 fn test_all_words_can_be_found() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     let words = vec![
         "a",

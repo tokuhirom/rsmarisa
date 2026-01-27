@@ -1,4 +1,4 @@
-use marisa::grimoire::trie::entry::{Entry, StringComparer};
+use rsmarisa::grimoire::trie::entry::{Entry, StringComparer};
 
 fn main() {
     // Test two simple words    let word1 = "app";

@@ -3,7 +3,7 @@
 //! Reads keys from standard input or files and builds a trie dictionary.
 
 use clap::Parser;
-use marisa::{Keyset, Trie};
+use rsmarisa::{Keyset, Trie};
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
@@ -68,7 +68,7 @@ fn read_keys<R: BufRead>(input: R, keyset: &mut Keyset) -> io::Result<()> {
 }
 
 fn build_config(args: &Args) -> i32 {
-    use marisa::base::{CacheLevel, NodeOrder, TailMode};
+    use rsmarisa::base::{CacheLevel, NodeOrder, TailMode};
 
     let mut config = 0i32;
 
@@ -168,7 +168,7 @@ fn main() {
         }
     } else {
         // Write to stdout (write directly to the writer)
-        use marisa::grimoire::io::Writer;
+        use rsmarisa::grimoire::io::Writer;
         let _stdout = io::stdout();
         let _writer = Writer::new();
 
