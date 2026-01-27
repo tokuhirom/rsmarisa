@@ -1,4 +1,4 @@
-use marisa::{Agent, Keyset, Trie};
+use rsmarisa::{Agent, Keyset, Trie};
 
 fn main() {
     // Build a simple trie

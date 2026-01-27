@@ -2,7 +2,7 @@
 
 #[test]
 fn test_two_words_app_apple() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     let words = vec!["app", "apple"];
 
@@ -25,7 +25,7 @@ fn test_two_words_app_apple() {
 
 #[test]
 fn test_three_words_a_app_apple() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     let words = vec!["a", "app", "apple"];
 
@@ -48,7 +48,7 @@ fn test_three_words_a_app_apple() {
 
 #[test]
 fn test_two_words_a_app() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     let words = vec!["a", "app"];
 
@@ -71,7 +71,7 @@ fn test_two_words_a_app() {
 
 #[test]
 fn test_two_words_a_apple() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     let words = vec!["a", "apple"];
 

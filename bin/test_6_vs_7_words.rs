@@ -1,5 +1,5 @@
-use marisa::keyset::Keyset;
-use marisa::trie::Trie;
+use rsmarisa::keyset::Keyset;
+use rsmarisa::trie::Trie;
 
 fn main() {
     // Test 6 words (works)

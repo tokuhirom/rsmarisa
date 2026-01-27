@@ -3,7 +3,7 @@
 //! This test verifies that Rust-generated binary files are identical to
 //! C++-generated files when built from the same keyset.
 
-use marisa::{Keyset, Trie};
+use rsmarisa::{Keyset, Trie};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;

@@ -2,9 +2,9 @@
 
 #[test]
 fn test_key_sort_order() {
-    use marisa::grimoire::algorithm::sort;
-    use marisa::grimoire::trie::key::Key;
-    use marisa::grimoire::vector::vector::Vector;
+    use rsmarisa::grimoire::algorithm::sort;
+    use rsmarisa::grimoire::trie::key::Key;
+    use rsmarisa::grimoire::vector::vector::Vector;
 
     let words = vec![
         "a",

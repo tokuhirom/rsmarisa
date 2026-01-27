@@ -1,6 +1,6 @@
 //! Debug tool to track sizes written by each component
 
-use marisa::{Keyset, Trie};
+use rsmarisa::{Keyset, Trie};
 use std::io::{self, Cursor, Write};
 
 // Custom writer that tracks bytes written

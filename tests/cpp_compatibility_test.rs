@@ -5,7 +5,7 @@
 
 #[test]
 fn test_key_id_assignment_matches_cpp() {
-    use marisa::{Agent, Keyset, Trie};
+    use rsmarisa::{Agent, Keyset, Trie};
 
     let words = vec![
         "a",

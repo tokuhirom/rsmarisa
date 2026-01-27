@@ -1,6 +1,6 @@
-use marisa::agent::Agent;
-use marisa::keyset::Keyset;
-use marisa::trie::Trie;
+use rsmarisa::agent::Agent;
+use rsmarisa::keyset::Keyset;
+use rsmarisa::trie::Trie;
 
 fn main() {
     // Test the specific failing words in different combinations

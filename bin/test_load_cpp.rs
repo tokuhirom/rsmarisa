@@ -1,4 +1,4 @@
-use marisa::{Agent, Trie};
+use rsmarisa::{Agent, Trie};
 
 fn main() {
     // Load C++ generated file

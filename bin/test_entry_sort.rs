@@ -1,5 +1,5 @@
-use marisa::grimoire::algorithm::sort;
-use marisa::grimoire::trie::entry::Entry;
+use rsmarisa::grimoire::algorithm::sort;
+use rsmarisa::grimoire::trie::entry::Entry;
 
 fn main() {
     let words = vec![

@@ -1,5 +1,5 @@
-use marisa::grimoire::trie::entry::Entry;
-use marisa::grimoire::vector::vector::Vector;
+use rsmarisa::grimoire::trie::entry::Entry;
+use rsmarisa::grimoire::vector::vector::Vector;
 
 fn main() {
     let words = vec![
