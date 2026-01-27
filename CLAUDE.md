@@ -428,17 +428,24 @@ The tagpr configuration is in `.tagpr`:
   - `rsmarisa-dump` - Dictionary dumper
 - **Integration tests**: CLI tools verified against C++ counterparts
 - **Memory safety**: Fixed all use-after-free bugs in reverse_lookup and predictive_search
-- **Published to crates.io**: Version 0.1.0 available at https://crates.io/crates/rsmarisa
+- **Published to crates.io**: Version 0.2.0 available at https://crates.io/crates/rsmarisa
 - **Automated releases**: Using tagpr for release management and GitHub Actions for CI/CD
-- **Memory-mapped I/O**: Full implementation using memmap2
+- **Memory-mapped I/O**: Full implementation using memmap2 (v0.2.0)
   - `Trie::mmap(filename)` - Load from file-backed memory map
   - `Trie::map(data)` - Load from static memory
   - Binary compatible with C++-created dictionaries
   - All vector types support map() operation
   - Proper lifetime management to prevent dangling pointers
+- **Library name alignment**: Changed library name from `marisa` to `rsmarisa` (PR #8, upcoming v0.3.0)
+  - Eliminates confusion between package name and import path
+  - Users now write `rsmarisa = "0.3"` in Cargo.toml and `use rsmarisa::` in code
+  - Breaking change requiring update of all imports
 
 ### 📝 Known Issues
 - Numerous compiler warnings (mostly lifetime annotations) - non-critical
+
+### 🔄 In Progress
+- **v0.3.0 release**: Library name alignment (PR #8 pending merge)
 
 ### 🎯 Future Work
 - Add benchmarking tool (`rsmarisa-benchmark`)
@@ -554,3 +561,18 @@ Testing against the original C++ implementation is invaluable:
 - Ensures true compatibility
 - Provides confidence in correctness
 - Documents expected behavior
+
+### 4. Library Name Consistency
+**Problem**: Originally, the package name was `rsmarisa` but the library name was `marisa`. This created confusion where users would write `rsmarisa = "0.2"` in their `Cargo.toml` but then use `use marisa::` in their code.
+
+**Solution**: Align the library name with the package name by changing `[lib] name = "marisa"` to `name = "rsmarisa"` in `Cargo.toml`.
+
+**Why this matters**:
+- **User experience**: The import path should match what users specify in their dependencies
+- **Discoverability**: When searching for "rsmarisa", the import path should be obvious
+- **Convention**: Most Rust crates use the same name for package and library
+- **Documentation clarity**: Examples and docs become more consistent
+
+**Impact**: This is a breaking change requiring all users to update their imports from `use marisa::` to `use rsmarisa::`. However, it significantly improves the long-term developer experience.
+
+**Files affected**: All source files, tests, examples, and documentation that import the library.

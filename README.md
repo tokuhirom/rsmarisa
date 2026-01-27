@@ -131,6 +131,12 @@ cargo run --example save_load
 - ✅ **Static memory support**: `Trie::map()` for embedding dictionary data in binaries
 - ✅ **Binary compatibility**: Both `mmap()` and `load()` work with C++-created files
 
+**Upcoming in v0.3.0 (Breaking Change):**
+- 🔄 **Library name alignment**: The library name will change from `marisa` to `rsmarisa` to match the package name
+  - **Migration required**: Update all imports from `use marisa::` to `use rsmarisa::`
+  - **Why**: Eliminates confusion and aligns with Rust naming conventions
+  - **Impact**: All users must update their code when upgrading to v0.3.0
+
 See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ### What's Implemented

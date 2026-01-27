@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING**: Library name changed from `marisa` to `rsmarisa` to align with package name
+  - Users must update imports from `use marisa::` to `use rsmarisa::`
+  - Eliminates confusion where package name (`rsmarisa`) didn't match import path (`marisa`)
+  - Improves discoverability and follows Rust naming conventions
+  - All source files, tests, examples, and documentation updated
+
 ## [0.1.0] - 2026-01-26
 
 ### Added
