@@ -3,7 +3,7 @@
 //! Reads key IDs from standard input and outputs the corresponding keys.
 
 use clap::Parser;
-use marisa::{Agent, Trie};
+use rsmarisa::{Agent, Trie};
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::process;
