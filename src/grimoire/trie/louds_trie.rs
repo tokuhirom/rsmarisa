@@ -1191,8 +1191,7 @@ impl LoudsTrie {
         assert!(query_pos < query_len, "Query position out of bounds");
 
         let node_id = state.node_id();
-        let query_bytes = agent.query().as_bytes().to_vec();
-        let query_char = query_bytes[query_pos];
+        let query_char = agent.query().as_bytes()[query_pos];
 
         // Check cache first
         let cache_id = self.get_cache_id_with_label(node_id, query_char);
@@ -1518,8 +1517,7 @@ impl LoudsTrie {
         assert!(query_pos < query_len, "Query position out of bounds");
 
         let node_id = state.node_id();
-        let query_bytes = agent.query().as_bytes().to_vec();
-        let query_char = query_bytes[query_pos];
+        let query_char = agent.query().as_bytes()[query_pos];
 
         // Check cache first
         let cache_id = self.get_cache_id_with_label(node_id, query_char);
@@ -1729,8 +1727,6 @@ impl LoudsTrie {
         let query_len = agent.query().length();
         let mut query_pos = agent.state().expect("Agent must have state").query_pos();
 
-        let query_bytes = agent.query().as_bytes().to_vec();
-
         assert!(query_pos < query_len, "Query position out of bounds");
         assert!(node_id != 0, "Node ID must not be 0");
 
@@ -1746,7 +1742,7 @@ impl LoudsTrie {
                     }
                     // Re-sync local query_pos after match_link may have modified agent state
                     query_pos = agent.state().expect("Agent must have state").query_pos();
-                } else if self.cache[cache_id].label() == query_bytes[query_pos] {
+                } else if self.cache[cache_id].label() == agent.query().as_bytes()[query_pos] {
                     query_pos += 1;
                     agent
                         .state_mut()
@@ -1779,7 +1775,7 @@ impl LoudsTrie {
                     // Re-sync local query_pos after tail.match_tail may have modified agent state
                     query_pos = agent.state().expect("Agent must have state").query_pos();
                 }
-            } else if self.bases[node_id] == query_bytes[query_pos] {
+            } else if self.bases[node_id] == agent.query().as_bytes()[query_pos] {
                 query_pos += 1;
                 agent
                     .state_mut()
@@ -1806,8 +1802,6 @@ impl LoudsTrie {
 
         assert!(query_pos < query_len, "Query position out of bounds");
         assert!(node_id != 0, "Node ID must not be 0");
-
-        let query_bytes = agent.query().as_bytes().to_vec();
         let mut node_id = node_id;
 
         loop {
@@ -1820,7 +1814,7 @@ impl LoudsTrie {
                     }
                     // Re-sync local query_pos after prefix_match may have modified agent state
                     query_pos = agent.state().expect("Agent must have state").query_pos();
-                } else if self.cache[cache_id].label() == query_bytes[query_pos] {
+                } else if self.cache[cache_id].label() == agent.query().as_bytes()[query_pos] {
                     agent
                         .state_mut()
                         .expect("Agent must have state")
@@ -1846,7 +1840,7 @@ impl LoudsTrie {
                     }
                     // Re-sync local query_pos after prefix_match may have modified agent state
                     query_pos = agent.state().expect("Agent must have state").query_pos();
-                } else if self.bases[node_id] == query_bytes[query_pos] {
+                } else if self.bases[node_id] == agent.query().as_bytes()[query_pos] {
                     agent
                         .state_mut()
                         .expect("Agent must have state")
