@@ -6,7 +6,7 @@
 //! of quicksort and insertion sort, optimized for trie construction.
 
 /// Threshold for switching from quicksort to insertion sort.
-const INSERTION_SORT_THRESHOLD: usize = 10;
+const INSERTION_SORT_THRESHOLD: usize = 16;
 
 /// Trait for types that can be sorted by this algorithm.
 ///

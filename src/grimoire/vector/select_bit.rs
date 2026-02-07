@@ -22,6 +22,7 @@ use super::select_tables::SELECT_TABLE;
 /// This is a simplified implementation. The original C++ version uses SIMD
 /// optimizations for better performance.
 #[cfg(target_pointer_width = "64")]
+#[inline]
 pub fn select_bit_u64(i: usize, bit_id: usize, unit: u64) -> usize {
     let mut remaining = i;
     let mut offset = 0usize;
@@ -56,6 +57,7 @@ pub fn select_bit_u64(i: usize, bit_id: usize, unit: u64) -> usize {
 ///
 /// The absolute position of the i-th set bit
 #[cfg(target_pointer_width = "32")]
+#[inline]
 pub fn select_bit_u32(i: usize, bit_id: usize, unit: u32) -> usize {
     let mut remaining = i;
     let mut offset = 0usize;
