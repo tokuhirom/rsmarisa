@@ -531,8 +531,8 @@ impl BitVector {
     /// Panics if the select0 index is empty or if i >= num_0s()
     #[cfg(target_pointer_width = "64")]
     pub fn select0(&self, mut i: usize) -> usize {
-        assert!(!self.select0s.empty(), "Select0 index not built");
-        assert!(i < self.num_0s(), "Index out of bounds");
+        debug_assert!(!self.select0s.empty(), "Select0 index not built");
+        debug_assert!(i < self.num_0s(), "Index out of bounds");
 
         let select_id = i / 512;
         assert!(select_id + 1 < self.select0s.size());
@@ -619,8 +619,8 @@ impl BitVector {
     /// Panics if the select1 index is empty or if i >= num_1s()
     #[cfg(target_pointer_width = "64")]
     pub fn select1(&self, mut i: usize) -> usize {
-        assert!(!self.select1s.empty(), "Select1 index not built");
-        assert!(i < self.num_1s(), "Index out of bounds");
+        debug_assert!(!self.select1s.empty(), "Select1 index not built");
+        debug_assert!(i < self.num_1s(), "Index out of bounds");
 
         let select_id = i / 512;
         assert!(select_id + 1 < self.select1s.size());

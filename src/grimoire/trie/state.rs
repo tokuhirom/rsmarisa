@@ -240,9 +240,9 @@ impl State {
     /// Initializes state for predictive search operation.
     pub fn predictive_search_init(&mut self) {
         self.key_buf.clear();
-        self.key_buf.reserve(64);
+        self.key_buf.reserve(256);
         self.history.clear();
-        self.history.reserve(4);
+        self.history.reserve(64);
         self.node_id = 0;
         self.query_pos = 0;
         self.history_pos = 0;

@@ -70,22 +70,23 @@ impl FlatVector {
     /// # Panics
     ///
     /// Panics if i >= size()
+    #[inline]
     pub fn get(&self, i: usize) -> u32 {
-        assert!(i < self.size, "Index out of bounds");
+        debug_assert!(i < self.size, "Index out of bounds");
 
         let pos = i * self.value_size;
         let unit_id = pos / WORD_SIZE;
         let unit_offset = pos % WORD_SIZE;
 
-        if (unit_offset + self.value_size) <= WORD_SIZE {
-            // Value fits in a single unit
-            ((self.units[unit_id] >> unit_offset) as u32) & self.mask
+        // Always read low bits from the current unit
+        let lo = self.units[unit_id] >> unit_offset;
+        // Read high bits from the next unit only when value spans two units
+        let hi = if unit_offset != 0 && unit_id + 1 < self.units.size() {
+            self.units[unit_id + 1] << (WORD_SIZE - unit_offset)
         } else {
-            // Value spans two units
-            let low_bits = (self.units[unit_id] >> unit_offset) as u32;
-            let high_bits = (self.units[unit_id + 1] << (WORD_SIZE - unit_offset)) as u32;
-            (low_bits | high_bits) & self.mask
-        }
+            0
+        };
+        ((lo | hi) as u32) & self.mask
     }
 
     /// Returns the number of bits per value.

@@ -1679,6 +1679,7 @@ impl LoudsTrie {
     }
 
     /// Internal restore implementation for recursive calls.
+    #[inline]
     fn restore_(&self, agent: &mut crate::agent::Agent, node_id: usize) {
         assert!(node_id != 0, "Node ID must not be 0");
 
@@ -1796,6 +1797,7 @@ impl LoudsTrie {
     }
 
     /// Internal prefix match implementation for recursive calls.
+    #[inline]
     fn prefix_match_(&self, agent: &mut crate::agent::Agent, node_id: usize) -> bool {
         let query_len = agent.query().length();
         let mut query_pos = agent.state().expect("Agent must have state").query_pos();
