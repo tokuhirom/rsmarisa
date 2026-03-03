@@ -936,7 +936,7 @@ impl LoudsTrie {
     /// # Errors
     ///
     /// Returns an error if reading fails or header is invalid
-    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+    pub fn read(&mut self, reader: &mut Reader<'_>) -> std::io::Result<()> {
         use crate::grimoire::trie::header::Header;
         Header::new().read(reader)?;
         self.read_internal(reader)
@@ -978,7 +978,7 @@ impl LoudsTrie {
     /// # Errors
     ///
     /// Returns an error if reading fails
-    fn read_internal(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+    fn read_internal(&mut self, reader: &mut Reader<'_>) -> std::io::Result<()> {
         // Read all component data structures
         self.louds.read(reader)?;
         self.terminal_flags.read(reader)?;

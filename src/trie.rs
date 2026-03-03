@@ -160,7 +160,7 @@ impl Trie {
     /// # Errors
     ///
     /// Returns an error if reading fails
-    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+    pub fn read(&mut self, reader: &mut Reader<'_>) -> std::io::Result<()> {
         let mut temp = Box::new(LoudsTrie::new());
         temp.read(reader)?;
         self.trie = Some(temp);

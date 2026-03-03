@@ -194,7 +194,7 @@ impl FlatVector {
     /// # Errors
     ///
     /// Returns an error if reading fails or if value_size > 32.
-    pub fn read(&mut self, reader: &mut crate::grimoire::io::Reader) -> std::io::Result<()> {
+    pub fn read(&mut self, reader: &mut crate::grimoire::io::Reader<'_>) -> std::io::Result<()> {
         // Read units
         self.units.read(reader)?;
 

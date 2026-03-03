@@ -82,7 +82,7 @@ impl Header {
     /// # Errors
     ///
     /// Returns an error if the header is invalid or reading fails
-    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+    pub fn read(&mut self, reader: &mut Reader<'_>) -> std::io::Result<()> {
         let mut buf = [0u8; HEADER_SIZE];
         reader.read_slice(&mut buf)?;
 
