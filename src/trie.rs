@@ -160,7 +160,7 @@ impl Trie {
     /// # Errors
     ///
     /// Returns an error if reading fails
-    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+    pub fn read(&mut self, reader: &mut Reader<'_>) -> std::io::Result<()> {
         let mut temp = Box::new(LoudsTrie::new());
         temp.read(reader)?;
         self.trie = Some(temp);
@@ -196,7 +196,7 @@ impl Trie {
     /// # Errors
     ///
     /// Returns an error if writing fails or trie is empty
-    pub fn write(&self, writer: &mut Writer) -> std::io::Result<()> {
+    pub fn write(&self, writer: &mut Writer<'_>) -> std::io::Result<()> {
         match self.trie.as_ref() {
             Some(trie) => trie.write(writer),
             None => Err(std::io::Error::new(

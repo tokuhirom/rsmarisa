@@ -258,7 +258,7 @@ impl Tail {
     /// # Errors
     ///
     /// Returns an error if reading fails.
-    pub fn read(&mut self, reader: &mut Reader) -> io::Result<()> {
+    pub fn read(&mut self, reader: &mut Reader<'_>) -> io::Result<()> {
         self.buf.read(reader)?;
         self.end_flags.read(reader)?;
         Ok(())
@@ -277,7 +277,7 @@ impl Tail {
     /// # Errors
     ///
     /// Returns an error if writing fails.
-    pub fn write(&self, writer: &mut Writer) -> io::Result<()> {
+    pub fn write(&self, writer: &mut Writer<'_>) -> io::Result<()> {
         self.buf.write(writer)?;
         self.end_flags.write(writer)?;
         Ok(())

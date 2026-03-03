@@ -936,7 +936,7 @@ impl LoudsTrie {
     /// # Errors
     ///
     /// Returns an error if reading fails or header is invalid
-    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+    pub fn read(&mut self, reader: &mut Reader<'_>) -> std::io::Result<()> {
         use crate::grimoire::trie::header::Header;
         Header::new().read(reader)?;
         self.read_internal(reader)
@@ -951,7 +951,7 @@ impl LoudsTrie {
     /// # Errors
     ///
     /// Returns an error if writing fails
-    pub fn write(&self, writer: &mut Writer) -> std::io::Result<()> {
+    pub fn write(&self, writer: &mut Writer<'_>) -> std::io::Result<()> {
         use crate::grimoire::trie::header::Header;
         Header::new().write(writer)?;
         self.write_internal(writer)
@@ -978,7 +978,7 @@ impl LoudsTrie {
     /// # Errors
     ///
     /// Returns an error if reading fails
-    fn read_internal(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+    fn read_internal(&mut self, reader: &mut Reader<'_>) -> std::io::Result<()> {
         // Read all component data structures
         self.louds.read(reader)?;
         self.terminal_flags.read(reader)?;
@@ -1030,7 +1030,7 @@ impl LoudsTrie {
     /// # Errors
     ///
     /// Returns an error if writing fails
-    fn write_internal(&self, writer: &mut Writer) -> std::io::Result<()> {
+    fn write_internal(&self, writer: &mut Writer<'_>) -> std::io::Result<()> {
         // Write all component data structures
         self.louds.write(writer)?;
         self.terminal_flags.write(writer)?;
