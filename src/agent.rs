@@ -125,6 +125,19 @@ impl Agent {
         self.state.as_deref_mut()
     }
 
+    /// Returns references to both the query and the state simultaneously.
+    ///
+    /// Because `query` and `state` are separate fields, Rust can prove
+    /// this split borrow is safe.  Callers that need to read the query
+    /// while also mutating the state (a very common pattern in hot query
+    /// loops) should use this instead of repeated `query()` + `state_mut()`
+    /// calls, which force two full-struct borrows that prevent holding a
+    /// `&[u8]` slice alongside a `&mut State`.
+    #[inline]
+    pub fn query_and_state_mut(&mut self) -> (&Query, Option<&mut State>) {
+        (&self.query, self.state.as_deref_mut())
+    }
+
     /// Sets the key from a string slice.
     pub fn set_key_str(&mut self, s: &str) {
         self.key.set_str(s);

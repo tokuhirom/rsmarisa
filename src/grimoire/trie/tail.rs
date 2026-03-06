@@ -333,9 +333,13 @@ impl Tail {
             return false;
         }
 
-        // Get query bytes to avoid borrow conflicts
-        let query_bytes = agent.query().as_bytes().to_vec();
-        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
+        // Split-borrow `agent` so we can hold `&[u8]` from the query alongside
+        // a `&mut State`, avoiding the `.to_vec()` heap allocation that would
+        // otherwise be required to work around the borrow checker.
+        let (query, state_opt) = agent.query_and_state_mut();
+        let query_bytes = query.as_bytes();
+        let state = state_opt.expect("Agent must have state");
+        let mut query_pos = state.query_pos();
 
         assert!(
             query_pos < query_bytes.len(),
@@ -359,10 +363,7 @@ impl Tail {
                     return false; // Mismatch
                 }
                 query_pos += 1;
-                agent
-                    .state_mut()
-                    .expect("Agent must have state")
-                    .set_query_pos(query_pos);
+                state.set_query_pos(query_pos);
 
                 let buf_index = offset + (query_pos - initial_query_pos);
                 if buf_index >= self.buf.size() {
@@ -384,10 +385,7 @@ impl Tail {
                     return false;
                 }
                 query_pos += 1;
-                agent
-                    .state_mut()
-                    .expect("Agent must have state")
-                    .set_query_pos(query_pos);
+                state.set_query_pos(query_pos);
 
                 let is_end = self.end_flags.get(i);
                 i += 1;
@@ -418,9 +416,13 @@ impl Tail {
             return false;
         }
 
-        // Get query bytes to avoid borrow conflicts
-        let query_bytes = agent.query().as_bytes().to_vec();
-        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
+        // Split-borrow `agent` so we can hold `&[u8]` from the query alongside
+        // a `&mut State` — eliminates the `.to_vec()` heap allocation.
+        let (query, state_opt) = agent.query_and_state_mut();
+        let query_bytes = query.as_bytes();
+        let query_len = query_bytes.len();
+        let state = state_opt.expect("Agent must have state");
+        let mut query_pos = state.query_pos();
 
         if self.end_flags.empty() {
             // Text mode
@@ -429,7 +431,6 @@ impl Tail {
                 if self.buf[start_offset + query_pos] != query_bytes[query_pos] {
                     return false;
                 }
-                let state = agent.state_mut().expect("Agent must have state");
                 state.key_buf_mut().push(self.buf[start_offset + query_pos]);
                 query_pos += 1;
                 state.set_query_pos(query_pos);
@@ -440,13 +441,12 @@ impl Tail {
                     return true;
                 }
 
-                if query_pos >= query_bytes.len() {
+                if query_pos >= query_len {
                     break;
                 }
             }
 
             // Append rest of tail
-            let state = agent.state_mut().expect("Agent must have state");
             let mut i = start_offset + query_pos;
             while i < self.buf.size() && self.buf[i] != 0 {
                 state.key_buf_mut().push(self.buf[i]);
@@ -460,7 +460,6 @@ impl Tail {
                 if self.buf[i] != query_bytes[query_pos] {
                     return false;
                 }
-                let state = agent.state_mut().expect("Agent must have state");
                 state.key_buf_mut().push(self.buf[i]);
                 query_pos += 1;
                 state.set_query_pos(query_pos);
@@ -472,13 +471,12 @@ impl Tail {
                     return true;
                 }
 
-                if query_pos >= query_bytes.len() {
+                if query_pos >= query_len {
                     break;
                 }
             }
 
             // Append rest of tail
-            let state = agent.state_mut().expect("Agent must have state");
             loop {
                 state.key_buf_mut().push(self.buf[i]);
                 if self.end_flags.get(i) {

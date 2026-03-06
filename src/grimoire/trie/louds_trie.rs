@@ -1549,10 +1549,8 @@ impl LoudsTrie {
 
         let mut current_node = louds_pos - node_id - 1;
         let _ = state;
-        agent
-            .state_mut()
-            .expect("Agent must have state")
-            .set_node_id(current_node);
+        // `set_node_id` is deferred: the caller only needs it when we return
+        // `true`; intermediate writes on every failed iteration are wasted work.
 
         let mut link_id = crate::base::INVALID_LINK_ID as usize;
 
@@ -1562,6 +1560,11 @@ impl LoudsTrie {
                 let prev_query_pos = agent.state().expect("Agent must have state").query_pos();
 
                 if self.prefix_match(agent, self.get_link_with_id(current_node, link_id)) {
+                    // Set node_id now that we know this is the winner.
+                    agent
+                        .state_mut()
+                        .expect("Agent must have state")
+                        .set_node_id(current_node);
                     return true;
                 }
 
@@ -1572,15 +1575,12 @@ impl LoudsTrie {
                 let state = agent.state_mut().expect("Agent must have state");
                 state.key_buf_mut().push(self.bases[current_node]);
                 state.set_query_pos(query_pos + 1);
+                state.set_node_id(current_node);
                 return true;
             }
 
             current_node += 1;
             louds_pos += 1;
-            agent
-                .state_mut()
-                .expect("Agent must have state")
-                .set_node_id(current_node);
 
             if !self.louds.get(louds_pos) {
                 break;
@@ -1609,12 +1609,9 @@ impl LoudsTrie {
     fn get_link_simple(&self, node_id: usize) -> usize {
         let base = self.bases[node_id] as usize;
         let extra_idx = self.link_flags.rank1(node_id);
-        // Defensive: Check if extras has the index (might be empty if tail not built yet)
-        let extra = if extra_idx < self.extras.size() {
-            self.extras.get(extra_idx) as usize
-        } else {
-            0
-        };
+        // `extras` is fully built before any query; this is always in bounds.
+        debug_assert!(extra_idx < self.extras.size(), "extra_idx out of bounds");
+        let extra = self.extras.get(extra_idx) as usize;
         base | (extra * 256)
     }
 
@@ -1622,12 +1619,9 @@ impl LoudsTrie {
     #[inline]
     fn get_link_with_id(&self, node_id: usize, link_id: usize) -> usize {
         let base = self.bases[node_id] as usize;
-        // Defensive: Check if extras has the index (might be empty if tail not built yet)
-        let extra = if link_id < self.extras.size() {
-            self.extras.get(link_id) as usize
-        } else {
-            0
-        };
+        // `extras` is fully built before any query; this is always in bounds.
+        debug_assert!(link_id < self.extras.size(), "link_id out of bounds");
+        let extra = self.extras.get(link_id) as usize;
         base | (extra * 256)
     }
 
