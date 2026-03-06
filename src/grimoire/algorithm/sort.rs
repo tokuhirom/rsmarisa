@@ -2,11 +2,30 @@
 //!
 //! Ported from: lib/marisa/grimoire/algorithm/sort.h
 //!
-//! This module implements depth-based string sorting using a hybrid approach
-//! of quicksort and insertion sort, optimized for trie construction.
+//! This module implements depth-based string sorting using a Parallel MSD
+//! (Most Significant Digit) Radix Sort. Compared to the original C++ three-way
+//! quicksort, MSD radix sort is:
+//!
+//! - **Asymptotically better**: O(n·k) vs O(n·k·log n), where k is the key length.
+//!   At each depth level we bucket all n elements in O(n) instead of comparing.
+//! - **Naturally parallel**: once we partition into the 257 independent buckets
+//!   (byte 0-255 + EOS) at a given depth, every bucket can be sorted on a
+//!   separate thread with no shared state.
+//!
+//! The parallelism is implemented with [rayon], which uses work-stealing so
+//! recursive sub-tasks are also distributed automatically.
 
-/// Threshold for switching from quicksort to insertion sort.
+use rayon::prelude::*;
+
+/// Below this many elements use insertion sort (branch-free, cache-hot).
 const INSERTION_SORT_THRESHOLD: usize = 16;
+
+/// Below this many elements skip rayon overhead and stay sequential.
+const PARALLEL_THRESHOLD: usize = 4096;
+
+/// Number of distinct label values: bytes 0-255 plus the EOS sentinel (-1).
+/// Label -1 maps to bucket index 0; byte b maps to bucket index b + 1.
+const NUM_BUCKETS: usize = 257;
 
 /// Trait for types that can be sorted by this algorithm.
 ///
@@ -19,245 +38,151 @@ pub trait Sortable {
     fn length(&self) -> usize;
 }
 
-/// Gets the label (byte value) at the specified depth.
+/// Returns the label (byte value) of `unit` at `depth`.
 ///
-/// Returns -1 if depth >= length (end-of-string marker).
-#[inline]
+/// Returns -1 when `depth >= unit.length()` (end-of-string sentinel).
+#[inline(always)]
 fn get_label<T: Sortable>(unit: &T, depth: usize) -> i32 {
-    if depth < unit.length() {
-        unit.get(depth).unwrap() as i32
-    } else {
-        -1
+    match unit.get(depth) {
+        Some(b) => b as i32,
+        None => -1,
     }
 }
 
-/// Computes the median of three labels for pivot selection.
-fn median<T: Sortable>(a: &T, b: &T, c: &T, depth: usize) -> i32 {
-    let x = get_label(a, depth);
-    let y = get_label(b, depth);
-    let z = get_label(c, depth);
-
-    if x < y {
-        if y < z {
-            y
-        } else if x < z {
-            z
-        } else {
-            x
+/// Compares two elements lexicographically starting from `depth`.
+#[inline]
+fn compare<T: Sortable>(lhs: &T, rhs: &T, depth: usize) -> std::cmp::Ordering {
+    let llen = lhs.length();
+    let rlen = rhs.length();
+    let common = llen.min(rlen);
+    for i in depth..common {
+        match lhs.get(i).unwrap().cmp(&rhs.get(i).unwrap()) {
+            std::cmp::Ordering::Equal => {}
+            ord => return ord,
         }
-    } else if x < z {
-        x
-    } else if y < z {
-        z
-    } else {
-        y
     }
+    llen.cmp(&rlen)
 }
 
-/// Compares two sortable elements starting from the given depth.
-///
-/// Returns:
-/// - Negative if lhs < rhs
-/// - 0 if lhs == rhs
-/// - Positive if lhs > rhs
-fn compare<T: Sortable>(lhs: &T, rhs: &T, depth: usize) -> i32 {
-    let mut i = depth;
-    while i < lhs.length() {
-        if i == rhs.length() {
-            return 1;
-        }
-        let lhs_byte = lhs.get(i).unwrap();
-        let rhs_byte = rhs.get(i).unwrap();
-        if lhs_byte != rhs_byte {
-            return lhs_byte as i32 - rhs_byte as i32;
-        }
-        i += 1;
-    }
-
-    if lhs.length() == rhs.length() {
-        0
-    } else if lhs.length() < rhs.length() {
-        -1
-    } else {
-        1
-    }
-}
-
-/// Insertion sort for small ranges.
-///
-/// Returns the count of unique string prefixes up to the given depth.
+/// Insertion sort for small ranges; returns the number of distinct groups.
 fn insertion_sort<T: Sortable>(data: &mut [T], depth: usize) -> usize {
     if data.is_empty() {
         return 0;
     }
-
-    let mut count = 1;
+    // Sort in-place.
     for i in 1..data.len() {
-        let mut result = 0;
         for j in (1..=i).rev() {
-            result = compare(&data[j - 1], &data[j], depth);
-            if result <= 0 {
+            if compare(&data[j - 1], &data[j], depth) == std::cmp::Ordering::Greater {
+                data.swap(j - 1, j);
+            } else {
                 break;
             }
-            data.swap(j - 1, j);
         }
-        if result != 0 {
+    }
+    // Count distinct groups (adjacent elements that differ from `depth` onward).
+    let mut count = 1;
+    for i in 1..data.len() {
+        if compare(&data[i - 1], &data[i], depth) != std::cmp::Ordering::Equal {
             count += 1;
         }
     }
     count
 }
 
-/// Depth-based quicksort implementation.
+/// Process a single bucket: recurse deeper or count the leaf.
 ///
-/// This is a three-way quicksort optimized for string sorting, using
-/// the depth parameter to compare strings character by character.
-///
-/// Returns the count of unique string prefixes.
-fn sort_impl<T: Sortable>(data: &mut [T], depth: usize) -> usize {
-    let mut count = 0;
-    let mut l = 0;
-    let mut r = data.len();
-
-    while (r - l) > INSERTION_SORT_THRESHOLD {
-        let mut pl = l;
-        let mut pr = r;
-        let mut pivot_l = l;
-        let mut pivot_r = r;
-
-        // Select pivot using median-of-three
-        let pivot = median(&data[l], &data[l + (r - l) / 2], &data[r - 1], depth);
-
-        loop {
-            // Move pl forward past elements less than or equal to pivot
-            while pl < pr {
-                let label = get_label(&data[pl], depth);
-                if label > pivot {
-                    break;
-                } else if label == pivot {
-                    data.swap(pl, pivot_l);
-                    pivot_l += 1;
-                }
-                pl += 1;
-            }
-
-            // Move pr backward past elements greater than or equal to pivot
-            while pl < pr {
-                pr -= 1;
-                let label = get_label(&data[pr], depth);
-                if label < pivot {
-                    break;
-                } else if label == pivot {
-                    pivot_r -= 1;
-                    data.swap(pr, pivot_r);
-                }
-            }
-
-            if pl >= pr {
-                break;
-            }
-
-            data.swap(pl, pr);
-            pl += 1;
-        }
-
-        // Move pivot elements to the middle
-        while pivot_l > l {
-            pivot_l -= 1;
-            pl -= 1;
-            data.swap(pivot_l, pl);
-        }
-        while pivot_r < r {
-            data.swap(pivot_r, pr);
-            pivot_r += 1;
-            pr += 1;
-        }
-
-        // Recursively sort partitions
-        if ((pl - l) > (pr - pl)) || ((r - pr) > (pr - pl)) {
-            // Middle partition (equal to pivot)
-            if pr - pl == 1 {
-                count += 1;
-            } else if pr - pl > 1 {
-                if pivot == -1 {
-                    count += 1;
-                } else {
-                    count += sort_impl(&mut data[pl..pr], depth + 1);
-                }
-            }
-
-            // Choose smaller partition to recurse on
-            if (pl - l) < (r - pr) {
-                if pl - l == 1 {
-                    count += 1;
-                } else if pl - l > 1 {
-                    count += sort_impl(&mut data[l..pl], depth);
-                }
-                l = pr;
-            } else {
-                if r - pr == 1 {
-                    count += 1;
-                } else if r - pr > 1 {
-                    count += sort_impl(&mut data[pr..r], depth);
-                }
-                r = pl;
-            }
-        } else {
-            // Recurse on left partition
-            if pl - l == 1 {
-                count += 1;
-            } else if pl - l > 1 {
-                count += sort_impl(&mut data[l..pl], depth);
-            }
-
-            // Recurse on right partition
-            if r - pr == 1 {
-                count += 1;
-            } else if r - pr > 1 {
-                count += sort_impl(&mut data[pr..r], depth);
-            }
-
-            // Continue with middle partition
-            l = pl;
-            r = pr;
-            if pr - pl == 1 {
-                count += 1;
-            } else if pr - pl > 1 {
-                if pivot == -1 {
-                    l = r;
-                    count += 1;
-                } else {
-                    // Continue loop with increased depth
-                    let mid_count = sort_impl(&mut data[l..r], depth + 1);
-                    count += mid_count;
-                    break;
-                }
-            }
-        }
+/// `label` is the byte value that all elements in this bucket share at `depth - 1`.
+/// A label of -1 means all elements terminated at the parent depth (EOS bucket).
+fn process_bucket<T: Sortable + Clone + Send + Sync>(
+    slice: &mut [T],
+    label: i32,
+    depth: usize,
+) -> usize {
+    match (label, slice.len()) {
+        // EOS bucket: every element shares the same full prefix — one trie node.
+        (-1, _) => 1,
+        // Single element: one unique leaf.
+        (_, 1) => 1,
+        // Multiple elements with the same label — go one level deeper.
+        _ => sort_impl(slice, depth),
     }
-
-    // Use insertion sort for small ranges
-    if r - l > 1 {
-        count += insertion_sort(&mut data[l..r], depth);
-    }
-
-    count
 }
 
-/// Sorts a slice of sortable elements.
+/// Parallel MSD Radix Sort.
 ///
-/// This function implements a depth-based string sorting algorithm
-/// optimized for trie construction. It returns the count of unique
-/// string prefixes found during sorting.
+/// At each depth level we:
+/// 1. Count how many elements fall into each of the 257 buckets — O(n).
+/// 2. Scatter elements into a temp buffer to achieve the partition — O(n).
+/// 3. Recurse on each non-empty bucket at depth + 1; buckets are independent
+///    so large inputs use rayon to process them in parallel.
 ///
-/// # Arguments
+/// Returns the count of unique string prefixes (= trie node count).
+fn sort_impl<T: Sortable + Clone + Send + Sync>(data: &mut [T], depth: usize) -> usize {
+    match data.len() {
+        0 => return 0,
+        1 => return 1,
+        n if n <= INSERTION_SORT_THRESHOLD => return insertion_sort(data, depth),
+        _ => {}
+    }
+
+    // --- Step 1: count occurrences of each label at this depth ---
+    let mut counts = [0usize; NUM_BUCKETS];
+    for item in data.iter() {
+        counts[(get_label(item, depth) + 1) as usize] += 1;
+    }
+
+    // --- Step 2: scatter into a temp buffer (stable within each bucket) ---
+    {
+        let temp: Vec<T> = data.iter().cloned().collect();
+        // Compute write cursors from prefix sums.
+        let mut cursors = [0usize; NUM_BUCKETS];
+        let mut pos = 0;
+        for i in 0..NUM_BUCKETS {
+            cursors[i] = pos;
+            pos += counts[i];
+        }
+        for item in &temp {
+            let idx = (get_label(item, depth) + 1) as usize;
+            data[cursors[idx]] = item.clone();
+            cursors[idx] += 1;
+        }
+    }
+
+    // --- Step 3: build non-overlapping bucket slices ---
+    // Buckets are already contiguous in `data` after the scatter above.
+    let mut bucket_slices: Vec<(&mut [T], i32)> = Vec::new();
+    {
+        let mut remaining: &mut [T] = data;
+        for (i, &cnt) in counts.iter().enumerate() {
+            if cnt > 0 {
+                let label = i as i32 - 1; // bucket index → label (-1 … 255)
+                let (head, tail) = remaining.split_at_mut(cnt);
+                remaining = tail;
+                bucket_slices.push((head, label));
+            }
+        }
+    }
+
+    // --- Step 4: recurse on each bucket (parallel when worthwhile) ---
+    let len = bucket_slices.iter().map(|(s, _)| s.len()).sum::<usize>();
+    if len >= PARALLEL_THRESHOLD {
+        bucket_slices
+            .par_iter_mut()
+            .map(|(slice, label)| process_bucket(slice, *label, depth + 1))
+            .sum()
+    } else {
+        bucket_slices
+            .iter_mut()
+            .map(|(slice, label)| process_bucket(slice, *label, depth + 1))
+            .sum()
+    }
+}
+
+/// Sorts a slice of sortable elements using parallel MSD radix sort.
 ///
-/// * `data` - Mutable slice of elements to sort
-///
-/// # Returns
-///
-/// The count of unique string prefixes
-pub fn sort<T: Sortable>(data: &mut [T]) -> usize {
+/// Returns the count of unique string prefixes found during sorting,
+/// which equals the number of nodes in the trie being built.
+pub fn sort<T: Sortable + Clone + Send + Sync>(data: &mut [T]) -> usize {
     sort_impl(data, 0)
 }
 
@@ -299,49 +224,42 @@ mod tests {
     }
 
     #[test]
-    fn test_median() {
-        let a = TestString::new("apple");
-        let b = TestString::new("banana");
-        let c = TestString::new("cherry");
-
-        // First chars: 'a', 'b', 'c' -> median is 'b'
-        assert_eq!(median(&a, &b, &c, 0), b'b' as i32);
-    }
-
-    #[test]
     fn test_compare() {
+        use std::cmp::Ordering;
         let a = TestString::new("apple");
         let b = TestString::new("banana");
         let c = TestString::new("apple");
 
-        assert!(compare(&a, &b, 0) < 0); // apple < banana
-        assert!(compare(&b, &a, 0) > 0); // banana > apple
-        assert_eq!(compare(&a, &c, 0), 0); // apple == apple
+        assert_eq!(compare(&a, &b, 0), Ordering::Less); // apple < banana
+        assert_eq!(compare(&b, &a, 0), Ordering::Greater); // banana > apple
+        assert_eq!(compare(&a, &c, 0), Ordering::Equal); // apple == apple
     }
 
     #[test]
     fn test_compare_with_depth() {
+        use std::cmp::Ordering;
         let a = TestString::new("apple");
         let b = TestString::new("apply");
         let c = TestString::new("application");
 
         // Comparing from start: "apple" < "apply" because 'e' < 'y'
-        assert!(compare(&a, &b, 0) < 0);
+        assert_eq!(compare(&a, &b, 0), Ordering::Less);
 
         // Comparing from index 4: 'e' < 'y'
-        assert!(compare(&a, &b, 4) < 0);
+        assert_eq!(compare(&a, &b, 4), Ordering::Less);
 
         // Comparing "apple" vs "application" from index 3: "le" < "lication"
-        assert!(compare(&a, &c, 3) < 0);
+        assert_eq!(compare(&a, &c, 3), Ordering::Less);
     }
 
     #[test]
     fn test_compare_prefix() {
+        use std::cmp::Ordering;
         let a = TestString::new("app");
         let b = TestString::new("apple");
 
-        assert!(compare(&a, &b, 0) < 0); // Shorter is less
-        assert!(compare(&b, &a, 0) > 0); // Longer is greater
+        assert_eq!(compare(&a, &b, 0), Ordering::Less); // Shorter is less
+        assert_eq!(compare(&b, &a, 0), Ordering::Greater); // Longer is greater
     }
 
     #[test]
