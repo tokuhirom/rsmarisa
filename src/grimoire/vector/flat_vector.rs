@@ -78,15 +78,23 @@ impl FlatVector {
         let unit_id = pos / WORD_SIZE;
         let unit_offset = pos % WORD_SIZE;
 
-        // Always read low bits from the current unit
         let lo = self.units[unit_id] >> unit_offset;
-        // Read high bits from the next unit only when value spans two units
-        let hi = if unit_offset != 0 && unit_id + 1 < self.units.size() {
-            self.units[unit_id + 1] << (WORD_SIZE - unit_offset)
-        } else {
-            0
-        };
-        ((lo | hi) as u32) & self.mask
+
+        // `unit_id + 1` is always a valid index: `build_internal()`, `read()`, and
+        // `map()` all append a sentinel zero unit after the logical data so that
+        // this access is safe without a bounds check.
+        //
+        // Branchless high-bits extraction:
+        //   • hi_raw  = units[unit_id + 1] shifted left by (WORD_SIZE - unit_offset).
+        //     When unit_offset == 0 the shift argument wraps to 0 mod WORD_SIZE,
+        //     but overflow_mask zeroes hi_raw out in that case, so the result is
+        //     still correct.
+        //   • overflow_mask is all-1s when the value straddles two units
+        //     (unit_offset + value_size > WORD_SIZE), otherwise 0.
+        let hi_raw = self.units[unit_id + 1] << ((WORD_SIZE - unit_offset) % WORD_SIZE);
+        let overflow: Unit =
+            ((unit_offset + self.value_size > WORD_SIZE) as Unit).wrapping_neg();
+        ((lo | (hi_raw & overflow)) as u32) & self.mask
     }
 
     /// Returns the number of bits per value.
@@ -120,9 +128,19 @@ impl FlatVector {
     }
 
     /// Returns the I/O size needed for serialization.
+    ///
+    /// The sentinel unit appended for branchless `get()` is **not** serialized,
+    /// so this reports the on-disk size of the logical units only.
     #[inline]
     pub fn io_size(&self) -> usize {
-        self.units.io_size() + std::mem::size_of::<u32>() * 2 + std::mem::size_of::<u64>()
+        // Logical unit count = units.size() - 1 (sentinel excluded).
+        let logical = self.logical_units();
+        let data_bytes = logical * std::mem::size_of::<Unit>();
+        let aligned = (data_bytes + 7) & !0x07;
+        std::mem::size_of::<u64>()          // total_size field written by Vector::write
+            + aligned                        // unit data (aligned to 8 bytes)
+            + std::mem::size_of::<u32>() * 2 // value_size + mask
+            + std::mem::size_of::<u64>()     // size
     }
 
     /// Clears the flat vector.
@@ -176,6 +194,10 @@ impl FlatVector {
         let temp_size: u64 = mapper.map_value()?;
         self.size = temp_size as usize;
 
+        // Append sentinel zero unit so that get() can safely read unit_id + 1
+        // without a bounds check (branchless extraction).
+        self.units.push_back(0);
+
         Ok(())
     }
 
@@ -216,10 +238,17 @@ impl FlatVector {
         let temp_size: u64 = reader.read()?;
         self.size = temp_size as usize;
 
+        // Append sentinel zero unit so that get() can safely read unit_id + 1
+        // without a bounds check (branchless extraction).
+        self.units.push_back(0);
+
         Ok(())
     }
 
     /// Writes the flat vector to a writer.
+    ///
+    /// The sentinel unit appended in memory for branchless `get()` is **not**
+    /// written, preserving binary compatibility with C++ marisa-trie.
     ///
     /// Format (matching C++ marisa-trie):
     /// - units: `Vector<u64>`
@@ -235,8 +264,19 @@ impl FlatVector {
     ///
     /// Returns an error if writing fails.
     pub fn write(&self, writer: &mut crate::grimoire::io::Writer) -> std::io::Result<()> {
-        // Write units
-        self.units.write(writer)?;
+        // Write the logical units, excluding the trailing sentinel zero unit.
+        // This matches the C++ binary format exactly.
+        let logical = self.logical_units();
+        let data_bytes = (logical * std::mem::size_of::<Unit>()) as u64;
+        writer.write(&data_bytes)?;
+        if logical > 0 {
+            writer.write_slice(&self.units.as_slice()[..logical])?;
+        }
+        // Alignment padding to 8-byte boundary (same as Vector::write)
+        let padding = ((8 - (data_bytes % 8)) % 8) as usize;
+        if padding > 0 {
+            writer.seek(padding)?;
+        }
 
         // Write value_size, mask, size
         writer.write(&(self.value_size as u32))?;
@@ -298,6 +338,11 @@ impl FlatVector {
         for i in 0..values.size() {
             self.set(i, values[i]);
         }
+
+        // Append a sentinel zero unit so that get() can always safely read
+        // units[unit_id + 1] without a bounds check (branchless extraction).
+        // This unit is excluded from serialization in write().
+        self.units.push_back(0);
     }
 
     /// Sets the value at the given index.
@@ -331,6 +376,16 @@ impl FlatVector {
     }
 
     // TODO: Implement map(), read(), write() for serialization
+
+    /// Returns the number of logical units (excluding the sentinel zero unit).
+    ///
+    /// This is the count that is serialized to disk; `self.units.size()` is
+    /// always one larger due to the in-memory sentinel appended for branchless
+    /// `get()`.
+    #[inline]
+    fn logical_units(&self) -> usize {
+        self.units.size().saturating_sub(1)
+    }
 }
 
 // Note: We cannot implement Index<usize> for FlatVector because

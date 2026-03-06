@@ -11,6 +11,9 @@
 //! - **Naturally parallel**: once we partition into the 257 independent buckets
 //!   (byte 0-255 + EOS) at a given depth, every bucket can be sorted on a
 //!   separate thread with no shared state.
+//! - **Single allocation**: a scratch buffer is allocated once at the top level
+//!   and passed as sub-slices to every recursive call, eliminating per-call
+//!   heap allocations.
 //!
 //! The parallelism is implemented with [rayon], which uses work-stealing so
 //! recursive sub-tasks are also distributed automatically.
@@ -95,6 +98,7 @@ fn insertion_sort<T: Sortable>(data: &mut [T], depth: usize) -> usize {
 /// A label of -1 means all elements terminated at the parent depth (EOS bucket).
 fn process_bucket<T: Sortable + Clone + Send + Sync>(
     slice: &mut [T],
+    scratch: &mut [T],
     label: i32,
     depth: usize,
 ) -> usize {
@@ -104,20 +108,29 @@ fn process_bucket<T: Sortable + Clone + Send + Sync>(
         // Single element: one unique leaf.
         (_, 1) => 1,
         // Multiple elements with the same label — go one level deeper.
-        _ => sort_impl(slice, depth),
+        _ => sort_impl(slice, scratch, depth),
     }
 }
 
-/// Parallel MSD Radix Sort.
+/// Parallel MSD Radix Sort with a pre-allocated scratch buffer.
 ///
 /// At each depth level we:
 /// 1. Count how many elements fall into each of the 257 buckets — O(n).
-/// 2. Scatter elements into a temp buffer to achieve the partition — O(n).
-/// 3. Recurse on each non-empty bucket at depth + 1; buckets are independent
+/// 2. Scatter elements into `scratch` to achieve the partition — O(n), no heap alloc.
+/// 3. Copy `scratch` back to `data` — O(n).
+/// 4. Recurse on each non-empty bucket at depth + 1; buckets are independent
 ///    so large inputs use rayon to process them in parallel.
 ///
+/// By passing `scratch` (pre-allocated in `sort`) down through every recursive
+/// call, we eliminate the per-call `Vec<T>` allocation of the naïve approach,
+/// reducing allocation count from O(unique-prefix-count) to exactly 1.
+///
 /// Returns the count of unique string prefixes (= trie node count).
-fn sort_impl<T: Sortable + Clone + Send + Sync>(data: &mut [T], depth: usize) -> usize {
+fn sort_impl<T: Sortable + Clone + Send + Sync>(
+    data: &mut [T],
+    scratch: &mut [T],
+    depth: usize,
+) -> usize {
     match data.len() {
         0 => return 0,
         1 => return 1,
@@ -131,59 +144,77 @@ fn sort_impl<T: Sortable + Clone + Send + Sync>(data: &mut [T], depth: usize) ->
         counts[(get_label(item, depth) + 1) as usize] += 1;
     }
 
-    // --- Step 2: scatter into a temp buffer (stable within each bucket) ---
+    // --- Step 2: scatter into scratch (pre-allocated, no heap allocation here) ---
     {
-        let temp: Vec<T> = data.iter().cloned().collect();
-        // Compute write cursors from prefix sums.
         let mut cursors = [0usize; NUM_BUCKETS];
         let mut pos = 0;
         for i in 0..NUM_BUCKETS {
             cursors[i] = pos;
             pos += counts[i];
         }
-        for item in &temp {
+        for item in data.iter() {
             let idx = (get_label(item, depth) + 1) as usize;
-            data[cursors[idx]] = item.clone();
+            scratch[cursors[idx]] = item.clone();
             cursors[idx] += 1;
         }
     }
 
-    // --- Step 3: build non-overlapping bucket slices ---
-    // Buckets are already contiguous in `data` after the scatter above.
-    let mut bucket_slices: Vec<(&mut [T], i32)> = Vec::new();
+    // --- Step 3: copy bucketed elements from scratch back into data ---
+    for (d, s) in data.iter_mut().zip(scratch.iter()) {
+        *d = s.clone();
+    }
+
+    // --- Step 4: build non-overlapping (data, scratch) bucket slice pairs ---
+    // Both slices are already aligned: after the copy, data[..n] mirrors scratch[..n].
+    let mut bucket_slices: Vec<(&mut [T], &mut [T], i32)> = Vec::new();
     {
-        let mut remaining: &mut [T] = data;
+        let mut rem_data: &mut [T] = data;
+        let mut rem_scratch: &mut [T] = scratch;
         for (i, &cnt) in counts.iter().enumerate() {
             if cnt > 0 {
                 let label = i as i32 - 1; // bucket index → label (-1 … 255)
-                let (head, tail) = remaining.split_at_mut(cnt);
-                remaining = tail;
-                bucket_slices.push((head, label));
+                let (hd, td) = rem_data.split_at_mut(cnt);
+                let (hs, ts) = rem_scratch.split_at_mut(cnt);
+                rem_data = td;
+                rem_scratch = ts;
+                bucket_slices.push((hd, hs, label));
             }
         }
     }
 
-    // --- Step 4: recurse on each bucket (parallel when worthwhile) ---
-    let len = bucket_slices.iter().map(|(s, _)| s.len()).sum::<usize>();
-    if len >= PARALLEL_THRESHOLD {
+    // --- Step 5: recurse on each bucket (parallel when worthwhile) ---
+    let n = bucket_slices.iter().map(|(d, _, _)| d.len()).sum::<usize>();
+    if n >= PARALLEL_THRESHOLD {
         bucket_slices
             .par_iter_mut()
-            .map(|(slice, label)| process_bucket(slice, *label, depth + 1))
+            .map(|(d, s, label)| process_bucket(d, s, *label, depth + 1))
             .sum()
     } else {
         bucket_slices
             .iter_mut()
-            .map(|(slice, label)| process_bucket(slice, *label, depth + 1))
+            .map(|(d, s, label)| process_bucket(d, s, *label, depth + 1))
             .sum()
     }
 }
 
 /// Sorts a slice of sortable elements using parallel MSD radix sort.
 ///
+/// A single scratch buffer of `data.len()` elements is allocated once and
+/// reused across all recursive calls, so the total heap-allocation count is
+/// exactly **1** regardless of input size or key depth.
+///
 /// Returns the count of unique string prefixes found during sorting,
 /// which equals the number of nodes in the trie being built.
 pub fn sort<T: Sortable + Clone + Send + Sync>(data: &mut [T]) -> usize {
-    sort_impl(data, 0)
+    match data.len() {
+        0 => return 0,
+        1 => return 1,
+        n if n <= INSERTION_SORT_THRESHOLD => return insertion_sort(data, 0),
+        _ => {}
+    }
+    // Allocate the scratch buffer exactly once for the entire sort.
+    let mut scratch: Vec<T> = data.iter().cloned().collect();
+    sort_impl(data, &mut scratch, 0)
 }
 
 #[cfg(test)]
