@@ -14,17 +14,13 @@ use crate::grimoire::io::{Mapper, Reader, Writer};
 /// bounds to ensure safe serialization.
 pub struct Vector<T: Copy> {
     data: Vec<T>,
-    fixed: bool,
 }
 
 impl<T: Copy> Vector<T> {
     /// Creates a new empty vector.
     #[inline]
     pub fn new() -> Self {
-        Vector {
-            data: Vec::new(),
-            fixed: false,
-        }
+        Vector { data: Vec::new() }
     }
 
     /// Pushes a value onto the end of the vector.
@@ -34,7 +30,6 @@ impl<T: Copy> Vector<T> {
     /// Panics if the vector is fixed.
     #[inline]
     pub fn push_back(&mut self, value: T) {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         self.data.push(value);
     }
 
@@ -42,47 +37,29 @@ impl<T: Copy> Vector<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the vector is empty or fixed.
+    /// Panics if the vector is empty.
     #[inline]
     pub fn pop_back(&mut self) {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         assert!(!self.data.is_empty(), "Cannot pop from empty vector");
         self.data.pop();
     }
 
     /// Resizes the vector to the given size, filling with default values.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the vector is fixed.
     #[inline]
     pub fn resize(&mut self, size: usize, value: T) {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         self.data.resize(size, value);
     }
 
     /// Reserves capacity for at least `additional` more elements.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the vector is fixed.
     #[inline]
     pub fn reserve(&mut self, capacity: usize) {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         self.data.reserve(capacity);
     }
 
     /// Shrinks the capacity to match the size.
     #[inline]
     pub fn shrink(&mut self) {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         self.data.shrink_to_fit();
-    }
-
-    /// Fixes the vector, preventing further modifications.
-    #[inline]
-    pub fn fix(&mut self) {
-        self.fixed = true;
     }
 
     /// Returns the number of elements in the vector.
@@ -101,12 +78,6 @@ impl<T: Copy> Vector<T> {
     #[inline]
     pub fn empty(&self) -> bool {
         self.data.is_empty()
-    }
-
-    /// Returns true if the vector is fixed.
-    #[inline]
-    pub fn fixed(&self) -> bool {
-        self.fixed
     }
 
     /// Returns the total size in bytes.
@@ -128,13 +99,8 @@ impl<T: Copy> Vector<T> {
     }
 
     /// Accesses an element by index (mutable version).
-    ///
-    /// # Panics
-    ///
-    /// Panics if the vector is fixed.
     #[inline]
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         self.data.get_mut(index)
     }
 
@@ -147,7 +113,6 @@ impl<T: Copy> Vector<T> {
     /// Returns a mutable reference to the last element, or None if empty.
     #[inline]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         self.data.last_mut()
     }
 
@@ -158,13 +123,8 @@ impl<T: Copy> Vector<T> {
     }
 
     /// Returns the vector as a mutable slice.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the vector is fixed.
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         &mut self.data
     }
 
@@ -178,7 +138,6 @@ impl<T: Copy> Vector<T> {
     #[inline]
     pub fn swap(&mut self, other: &mut Vector<T>) {
         std::mem::swap(&mut self.data, &mut other.data);
-        std::mem::swap(&mut self.fixed, &mut other.fixed);
     }
 
     /// Maps the vector from a mapper.
@@ -197,7 +156,6 @@ impl<T: Copy> Vector<T> {
         // Calculate number of elements
         let elem_size = std::mem::size_of::<T>();
         if elem_size == 0 {
-            self.fixed = true;
             return Ok(()); // Zero-sized types
         }
 
@@ -221,7 +179,6 @@ impl<T: Copy> Vector<T> {
             mapper.seek(padding)?;
         }
 
-        self.fixed = true;
         Ok(())
     }
 
@@ -319,7 +276,6 @@ impl<T: Copy> std::ops::Index<usize> for Vector<T> {
 impl<T: Copy> std::ops::IndexMut<usize> for Vector<T> {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        assert!(!self.fixed, "Cannot modify fixed vector");
         &mut self.data[index]
     }
 }
@@ -360,23 +316,6 @@ mod tests {
         for i in 0..5 {
             assert_eq!(vec[i], 42);
         }
-    }
-
-    #[test]
-    fn test_vector_fix() {
-        let mut vec = Vector::new();
-        vec.push_back(1);
-        vec.fix();
-
-        assert!(vec.fixed());
-    }
-
-    #[test]
-    #[should_panic(expected = "Cannot modify fixed vector")]
-    fn test_vector_fixed_push() {
-        let mut vec = Vector::new();
-        vec.fix();
-        vec.push_back(1);
     }
 
     #[test]
