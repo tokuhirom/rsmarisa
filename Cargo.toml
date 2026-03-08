@@ -21,15 +21,40 @@ exclude = [
     "*.marisa",
 ]
 
+[features]
+default = ["native"]
+
+## High-level target modes (pick one)
+
+# Full native: OS threads via rayon + memory-mapped file I/O
+native = ["parallel", "mmap"]
+
+# WASM without threads: sequential sort, no mmap.
+# Data is loaded via `Mapper::open_memory()` from host-provided buffers.
+wasm = []
+
+# WASM with Web Worker threads: rayon parallelism via wasm-bindgen-rayon.
+# Requires nightly Rust, SharedArrayBuffer, and COOP/COEP headers.
+# Call `initThreadPool(n)` from JS before using the library.
+# Pass n=1 for single-thread mode, or navigator.hardwareConcurrency for full parallelism.
+wasm-threads = ["parallel", "dep:wasm-bindgen", "dep:wasm-bindgen-rayon"]
+
+## Low-level features (used by modes above; can be set independently)
+parallel = ["dep:rayon"]
+mmap = ["dep:memmap2"]
+
 [dependencies]
 # Required for CLI tools (rsmarisa-*)
 clap = { version = "4.5", features = ["derive"] }
-# Memory-mapped file I/O
-memmap2 = "0.9"
+# Memory-mapped file I/O (native only)
+memmap2 = { version = "0.9", optional = true }
 # Succinct data structures: BitVec + RsVec for rank/select queries
 vers-vecs = "1.9"
 # Parallel iterators for sort acceleration
-rayon = "1"
+rayon = { version = "1", optional = true }
+# WASM thread pool support (wasm-threads mode only)
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-rayon = { version = "1.2", optional = true }
 
 [dev-dependencies]
 tempfile = "3.0"

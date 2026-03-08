@@ -15,15 +15,19 @@
 //!   and passed as sub-slices to every recursive call, eliminating per-call
 //!   heap allocations.
 //!
-//! The parallelism is implemented with [rayon], which uses work-stealing so
-//! recursive sub-tasks are also distributed automatically.
+//! The parallelism is implemented with [rayon] (behind the `parallel` feature),
+//! which uses work-stealing so recursive sub-tasks are also distributed
+//! automatically. When the `parallel` feature is disabled (e.g., for WASM),
+//! all sorting is sequential with identical results.
 
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 /// Below this many elements use insertion sort (branch-free, cache-hot).
 const INSERTION_SORT_THRESHOLD: usize = 16;
 
 /// Below this many elements skip rayon overhead and stay sequential.
+#[cfg(feature = "parallel")]
 const PARALLEL_THRESHOLD: usize = 4096;
 
 /// Number of distinct label values: bytes 0-255 plus the EOS sentinel (-1).
@@ -183,18 +187,21 @@ fn sort_impl<T: Sortable + Clone + Send + Sync>(
     }
 
     // --- Step 5: recurse on each bucket (parallel when worthwhile) ---
-    let n = bucket_slices.iter().map(|(d, _, _)| d.len()).sum::<usize>();
-    if n >= PARALLEL_THRESHOLD {
-        bucket_slices
-            .par_iter_mut()
-            .map(|(d, s, label)| process_bucket(d, s, *label, depth + 1))
-            .sum()
-    } else {
-        bucket_slices
-            .iter_mut()
-            .map(|(d, s, label)| process_bucket(d, s, *label, depth + 1))
-            .sum()
+    #[cfg(feature = "parallel")]
+    {
+        let n = bucket_slices.iter().map(|(d, _, _)| d.len()).sum::<usize>();
+        if n >= PARALLEL_THRESHOLD {
+            return bucket_slices
+                .par_iter_mut()
+                .map(|(d, s, label)| process_bucket(d, s, *label, depth + 1))
+                .sum();
+        }
     }
+
+    bucket_slices
+        .iter_mut()
+        .map(|(d, s, label)| process_bucket(d, s, *label, depth + 1))
+        .sum()
 }
 
 /// Sorts a slice of sortable elements using parallel MSD radix sort.

@@ -351,28 +351,37 @@ impl BitVector {
     ///
     /// # Panics
     ///
-    /// Panics if `build()` has not been called or if i > size().
+    /// Panics (in debug) if `build()` has not been called or if i > size().
     #[inline]
     pub fn rank0(&self, i: usize) -> usize {
-        assert!(i <= self.size, "Index out of bounds");
-        self.rs_vec
-            .as_ref()
-            .expect("Rank index not built")
-            .rank0(i)
+        debug_assert!(i <= self.size, "Index out of bounds");
+        debug_assert!(self.rs_vec.is_some(), "Rank index not built");
+        // SAFETY: rs_vec is guaranteed to be Some after build() is called,
+        // and build() must be called before any query operation.
+        unsafe {
+            self.rs_vec
+                .as_ref()
+                .unwrap_unchecked()
+                .rank0(i)
+        }
     }
 
     /// Returns the number of 1-bits in the range [0, i).
     ///
     /// # Panics
     ///
-    /// Panics if `build()` has not been called or if i > size().
+    /// Panics (in debug) if `build()` has not been called or if i > size().
     #[inline]
     pub fn rank1(&self, i: usize) -> usize {
-        assert!(i <= self.size, "Index out of bounds");
-        self.rs_vec
-            .as_ref()
-            .expect("Rank index not built")
-            .rank1(i)
+        debug_assert!(i <= self.size, "Index out of bounds");
+        debug_assert!(self.rs_vec.is_some(), "Rank index not built");
+        // SAFETY: rs_vec is guaranteed to be Some after build() is called.
+        unsafe {
+            self.rs_vec
+                .as_ref()
+                .unwrap_unchecked()
+                .rank1(i)
+        }
     }
 
     /// Builds the rank and select indices.
@@ -450,27 +459,22 @@ impl BitVector {
 
         let num_units = self.units.size();
 
-        // We need to collect rank data without modifying units
-        // Create temporary storage for rank indices
-        let mut temp_ranks = Vec::new();
-        temp_ranks.resize(self.ranks.size(), RankIndex::default());
-
         for unit_id in 0..num_units {
             let bit_id = unit_id * WORD_SIZE;
 
             // Update rank index at 64-bit boundaries
             if (bit_id % 64) == 0 {
                 let rank_id = bit_id / 512;
-                let rank_abs = temp_ranks[rank_id].abs();
+                let rank_abs = self.ranks[rank_id].abs();
                 match (bit_id / 64) % 8 {
-                    0 => temp_ranks[rank_id].set_abs(num_1s),
-                    1 => temp_ranks[rank_id].set_rel1(num_1s - rank_abs),
-                    2 => temp_ranks[rank_id].set_rel2(num_1s - rank_abs),
-                    3 => temp_ranks[rank_id].set_rel3(num_1s - rank_abs),
-                    4 => temp_ranks[rank_id].set_rel4(num_1s - rank_abs),
-                    5 => temp_ranks[rank_id].set_rel5(num_1s - rank_abs),
-                    6 => temp_ranks[rank_id].set_rel6(num_1s - rank_abs),
-                    7 => temp_ranks[rank_id].set_rel7(num_1s - rank_abs),
+                    0 => self.ranks[rank_id].set_abs(num_1s),
+                    1 => self.ranks[rank_id].set_rel1(num_1s - rank_abs),
+                    2 => self.ranks[rank_id].set_rel2(num_1s - rank_abs),
+                    3 => self.ranks[rank_id].set_rel3(num_1s - rank_abs),
+                    4 => self.ranks[rank_id].set_rel4(num_1s - rank_abs),
+                    5 => self.ranks[rank_id].set_rel5(num_1s - rank_abs),
+                    6 => self.ranks[rank_id].set_rel6(num_1s - rank_abs),
+                    7 => self.ranks[rank_id].set_rel7(num_1s - rank_abs),
                     _ => unreachable!(),
                 }
             }
@@ -507,32 +511,27 @@ impl BitVector {
         if (num_bits % 512) != 0 {
             let rank_id = (num_bits - 1) / 512;
             let last_block_pos = ((num_bits - 1) / 64) % 8;
-            let rank_abs = temp_ranks[rank_id].abs();
+            let rank_abs = self.ranks[rank_id].abs();
             let rel_value = num_1s - rank_abs;
 
             for rel_idx in (last_block_pos + 1)..=7 {
                 match rel_idx {
-                    1 => temp_ranks[rank_id].set_rel1(rel_value),
-                    2 => temp_ranks[rank_id].set_rel2(rel_value),
-                    3 => temp_ranks[rank_id].set_rel3(rel_value),
-                    4 => temp_ranks[rank_id].set_rel4(rel_value),
-                    5 => temp_ranks[rank_id].set_rel5(rel_value),
-                    6 => temp_ranks[rank_id].set_rel6(rel_value),
-                    7 => temp_ranks[rank_id].set_rel7(rel_value),
+                    1 => self.ranks[rank_id].set_rel1(rel_value),
+                    2 => self.ranks[rank_id].set_rel2(rel_value),
+                    3 => self.ranks[rank_id].set_rel3(rel_value),
+                    4 => self.ranks[rank_id].set_rel4(rel_value),
+                    5 => self.ranks[rank_id].set_rel5(rel_value),
+                    6 => self.ranks[rank_id].set_rel6(rel_value),
+                    7 => self.ranks[rank_id].set_rel7(rel_value),
                     _ => {}
                 }
             }
         }
 
         // Set final absolute rank
-        if !temp_ranks.is_empty() {
-            let last_idx = temp_ranks.len() - 1;
-            temp_ranks[last_idx].set_abs(num_1s);
-        }
-
-        // Copy temp_ranks back to self.ranks
-        for (i, rank) in temp_ranks.into_iter().enumerate() {
-            self.ranks[i] = rank;
+        if self.ranks.size() > 0 {
+            let last_idx = self.ranks.size() - 1;
+            self.ranks[last_idx].set_abs(num_1s);
         }
 
         if enables_select0 {
@@ -565,14 +564,17 @@ impl BitVector {
     /// Panics if the select0 index was not enabled in `build()`, or if
     /// `build()` has not been called.
     pub fn select0(&self, i: usize) -> usize {
-        assert!(
+        debug_assert!(
             self.enables_select0,
             "Select0 index not built"
         );
-        self.rs_vec
-            .as_ref()
-            .expect("Rank index not built")
-            .select0(i)
+        // SAFETY: rs_vec is guaranteed to be Some after build() is called.
+        unsafe {
+            self.rs_vec
+                .as_ref()
+                .unwrap_unchecked()
+                .select0(i)
+        }
     }
 
     /// Returns the position of the i-th 1-bit (0-indexed).
@@ -582,14 +584,17 @@ impl BitVector {
     /// Panics if the select1 index was not enabled in `build()`, or if
     /// `build()` has not been called.
     pub fn select1(&self, i: usize) -> usize {
-        assert!(
+        debug_assert!(
             self.enables_select1,
             "Select1 index not built"
         );
-        self.rs_vec
-            .as_ref()
-            .expect("Rank index not built")
-            .select1(i)
+        // SAFETY: rs_vec is guaranteed to be Some after build() is called.
+        unsafe {
+            self.rs_vec
+                .as_ref()
+                .unwrap_unchecked()
+                .select1(i)
+        }
     }
 }
 

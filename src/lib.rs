@@ -31,6 +31,13 @@
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
 
+// Re-export wasm-bindgen-rayon's thread pool initializer for wasm-threads mode.
+// In JavaScript, call `await initThreadPool(navigator.hardwareConcurrency)`
+// after WASM module initialization.
+// Pass 1 for single-thread mode (no SharedArrayBuffer needed at runtime).
+#[cfg(feature = "wasm-threads")]
+pub use wasm_bindgen_rayon::init_thread_pool;
+
 pub mod agent;
 pub mod base;
 pub mod grimoire;

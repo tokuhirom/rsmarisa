@@ -1069,24 +1069,24 @@ impl LoudsTrie {
     ///
     /// Panics if agent doesn't have state initialized.
     pub fn lookup(&self, agent: &mut crate::agent::Agent) -> bool {
-        assert!(agent.has_state(), "Agent must have state initialized");
+        debug_assert!(agent.has_state(), "Agent must have state initialized");
 
         // Initialize for lookup
         {
-            let state = agent.state_mut().expect("Agent must have state");
+            let state = unsafe { agent.state_mut().unwrap_unchecked() };
             state.lookup_init();
         }
 
         // Traverse trie following query
         let query_len = agent.query().length();
-        while agent.state().expect("Agent must have state").query_pos() < query_len {
+        while unsafe { agent.state().unwrap_unchecked() }.query_pos() < query_len {
             if !self.find_child(agent) {
                 return false;
             }
         }
 
         // Check if this node is a terminal (end of a key)
-        let node_id = agent.state().expect("Agent must have state").node_id();
+        let node_id = unsafe { agent.state().unwrap_unchecked() }.node_id();
         if !self.terminal_flags.get(node_id) {
             return false;
         }
@@ -1111,21 +1111,21 @@ impl LoudsTrie {
     ///
     /// Panics if agent doesn't have state or if key ID is out of range.
     pub fn reverse_lookup(&self, agent: &mut crate::agent::Agent) {
-        assert!(agent.has_state(), "Agent must have state initialized");
+        debug_assert!(agent.has_state(), "Agent must have state initialized");
 
         let key_id = agent.query().id();
-        assert!(key_id < self.size(), "Key ID out of range");
+        debug_assert!(key_id < self.size(), "Key ID out of range");
 
         // Initialize for reverse lookup
         {
-            let state = agent.state_mut().expect("Agent must have state");
+            let state = unsafe { agent.state_mut().unwrap_unchecked() };
             state.reverse_lookup_init();
         }
 
         // Find the terminal node for this key ID
         let node_id = self.terminal_flags.select1(key_id);
         {
-            let state = agent.state_mut().expect("Agent must have state");
+            let state = unsafe { agent.state_mut().unwrap_unchecked() };
             state.set_node_id(node_id);
         }
 
@@ -1150,7 +1150,7 @@ impl LoudsTrie {
                 self.restore(agent, self.get_link_simple(current_node));
 
                 // Reverse the newly added portion
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 let key_buf = state.key_buf_mut();
                 key_buf[prev_key_pos..].reverse();
             } else {
@@ -1163,7 +1163,7 @@ impl LoudsTrie {
 
             if current_node <= self.num_l1_nodes {
                 // Reverse entire key buffer
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 state.key_buf_mut().reverse();
                 let _ = state;
 
@@ -1184,11 +1184,11 @@ impl LoudsTrie {
     ///
     /// Internal helper for lookup operation.
     fn find_child(&self, agent: &mut crate::agent::Agent) -> bool {
-        let state = agent.state().expect("Agent must have state");
+        let state = unsafe { agent.state().unwrap_unchecked() };
         let query_pos = state.query_pos();
         let query_len = agent.query().length();
 
-        assert!(query_pos < query_len, "Query position out of bounds");
+        debug_assert!(query_pos < query_len, "Query position out of bounds");
 
         let node_id = state.node_id();
         let query_char = agent.query().as_bytes()[query_pos];
@@ -1232,13 +1232,13 @@ impl LoudsTrie {
         loop {
             if self.link_flags.get(current_node) {
                 link_id = self.update_link_id(link_id, current_node);
-                let prev_query_pos = agent.state().expect("Agent must have state").query_pos();
+                let prev_query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
 
                 if self.match_link(agent, self.get_link_with_id(current_node, link_id)) {
                     return true;
                 }
 
-                if agent.state().expect("Agent must have state").query_pos() != prev_query_pos {
+                if unsafe { agent.state().unwrap_unchecked() }.query_pos() != prev_query_pos {
                     return false;
                 }
             } else if self.bases[current_node] == query_char {
@@ -1280,11 +1280,11 @@ impl LoudsTrie {
     pub fn common_prefix_search(&self, agent: &mut crate::agent::Agent) -> bool {
         use crate::grimoire::trie::state::StatusCode;
 
-        assert!(agent.has_state(), "Agent must have state initialized");
+        debug_assert!(agent.has_state(), "Agent must have state initialized");
 
         // Check if search is complete
         {
-            let state = agent.state().expect("Agent must have state");
+            let state = unsafe { agent.state().unwrap_unchecked() };
             if state.status_code() == StatusCode::EndOfCommonPrefixSearch {
                 return false;
             }
@@ -1292,10 +1292,10 @@ impl LoudsTrie {
 
         // Initialize on first call
         {
-            let state = agent.state().expect("Agent must have state");
+            let state = unsafe { agent.state().unwrap_unchecked() };
             if state.status_code() != StatusCode::ReadyToCommonPrefixSearch {
                 let _ = state;
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 state.common_prefix_search_init();
 
                 // Check if root is terminal
@@ -1314,7 +1314,7 @@ impl LoudsTrie {
 
         // Search for prefix matches
         let query_len = agent.query().length();
-        while agent.state().expect("Agent must have state").query_pos() < query_len {
+        while unsafe { agent.state().unwrap_unchecked() }.query_pos() < query_len {
             if !self.find_child(agent) {
                 agent
                     .state_mut()
@@ -1323,9 +1323,9 @@ impl LoudsTrie {
                 return false;
             }
 
-            let node_id = agent.state().expect("Agent must have state").node_id();
+            let node_id = unsafe { agent.state().unwrap_unchecked() }.node_id();
             if self.terminal_flags.get(node_id) {
-                let query_pos = agent.state().expect("Agent must have state").query_pos();
+                let query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
                 let key_id = self.terminal_flags.rank1(node_id);
                 agent.set_key_from_query_prefix(query_pos);
                 agent.set_key_id(key_id);
@@ -1356,11 +1356,11 @@ impl LoudsTrie {
         use crate::grimoire::trie::history::History;
         use crate::grimoire::trie::state::StatusCode;
 
-        assert!(agent.has_state(), "Agent must have state initialized");
+        debug_assert!(agent.has_state(), "Agent must have state initialized");
 
         // Check if search is complete
         {
-            let state = agent.state().expect("Agent must have state");
+            let state = unsafe { agent.state().unwrap_unchecked() };
             if state.status_code() == StatusCode::EndOfPredictiveSearch {
                 return false;
             }
@@ -1368,14 +1368,14 @@ impl LoudsTrie {
 
         // Initialize on first call
         {
-            let state = agent.state().expect("Agent must have state");
+            let state = unsafe { agent.state().unwrap_unchecked() };
             if state.status_code() != StatusCode::ReadyToPredictiveSearch {
                 let _ = state;
                 let query_len = agent.query().length();
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 state.predictive_search_init();
                 let _ = state;
-                while agent.state().expect("Agent must have state").query_pos() < query_len {
+                while unsafe { agent.state().unwrap_unchecked() }.query_pos() < query_len {
                     if !self.predictive_find_child(agent) {
                         agent
                             .state_mut()
@@ -1384,7 +1384,7 @@ impl LoudsTrie {
                         return false;
                     }
                 }
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
 
                 // Push initial history
                 let mut history = History::new();
@@ -1409,14 +1409,14 @@ impl LoudsTrie {
         // Enumerate all keys under current node
         loop {
             let (history_pos, history_size) = {
-                let state = agent.state().expect("Agent must have state");
+                let state = unsafe { agent.state().unwrap_unchecked() };
                 (state.history_pos(), state.history_size())
             };
 
             if history_pos == history_size {
                 // Need to create next child
                 let current_history = {
-                    let state = agent.state().expect("Agent must have state");
+                    let state = unsafe { agent.state().unwrap_unchecked() };
                     *state.history_back()
                 };
 
@@ -1432,7 +1432,7 @@ impl LoudsTrie {
 
             // Get next history entry
             let link_flag = {
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 let next = state.history_at_mut(history_pos);
                 let louds_pos = next.louds_pos();
                 let link_flag = self.louds.get(louds_pos);
@@ -1442,7 +1442,7 @@ impl LoudsTrie {
 
             if link_flag {
                 // This is a child node
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 state.set_history_pos(history_pos + 1);
 
                 let next_node_id = state.history_at(history_pos).node_id();
@@ -1455,7 +1455,7 @@ impl LoudsTrie {
 
                     self.restore(agent, self.get_link_with_id(next_node_id, new_link_id));
 
-                    let state = agent.state_mut().expect("Agent must have state");
+                    let state = unsafe { agent.state_mut().unwrap_unchecked() };
                     let key_len = state.key_buf().len();
                     state.history_at_mut(history_pos).set_key_pos(key_len);
                 } else {
@@ -1466,7 +1466,7 @@ impl LoudsTrie {
 
                 // Check if terminal
                 if self.terminal_flags.get(next_node_id) {
-                    let state = agent.state_mut().expect("Agent must have state");
+                    let state = unsafe { agent.state_mut().unwrap_unchecked() };
                     let next_key_id = state.history_at(history_pos).key_id();
 
                     use crate::base::INVALID_KEY_ID;
@@ -1488,7 +1488,7 @@ impl LoudsTrie {
                 }
             } else if history_pos != 1 {
                 // Backtrack
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 let current = state.history_at_mut(history_pos - 1);
                 current.set_node_id(current.node_id() + 1);
 
@@ -1510,11 +1510,11 @@ impl LoudsTrie {
     ///
     /// Similar to find_child but also appends to key buffer.
     fn predictive_find_child(&self, agent: &mut crate::agent::Agent) -> bool {
-        let state = agent.state().expect("Agent must have state");
+        let state = unsafe { agent.state().unwrap_unchecked() };
         let query_pos = state.query_pos();
         let query_len = agent.query().length();
 
-        assert!(query_pos < query_len, "Query position out of bounds");
+        debug_assert!(query_pos < query_len, "Query position out of bounds");
 
         let node_id = state.node_id();
         let query_char = agent.query().as_bytes()[query_pos];
@@ -1530,7 +1530,7 @@ impl LoudsTrie {
                 }
             } else {
                 let _ = state;
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 state.key_buf_mut().push(self.cache[cache_id].label());
                 state.set_query_pos(query_pos + 1);
             }
@@ -1557,7 +1557,7 @@ impl LoudsTrie {
         loop {
             if self.link_flags.get(current_node) {
                 link_id = self.update_link_id(link_id, current_node);
-                let prev_query_pos = agent.state().expect("Agent must have state").query_pos();
+                let prev_query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
 
                 if self.prefix_match(agent, self.get_link_with_id(current_node, link_id)) {
                     // Set node_id now that we know this is the winner.
@@ -1568,11 +1568,11 @@ impl LoudsTrie {
                     return true;
                 }
 
-                if agent.state().expect("Agent must have state").query_pos() != prev_query_pos {
+                if unsafe { agent.state().unwrap_unchecked() }.query_pos() != prev_query_pos {
                     return false;
                 }
             } else if self.bases[current_node] == query_char {
-                let state = agent.state_mut().expect("Agent must have state");
+                let state = unsafe { agent.state_mut().unwrap_unchecked() };
                 state.key_buf_mut().push(self.bases[current_node]);
                 state.set_query_pos(query_pos + 1);
                 state.set_node_id(current_node);
@@ -1675,7 +1675,7 @@ impl LoudsTrie {
     /// Internal restore implementation for recursive calls.
     #[inline]
     fn restore_(&self, agent: &mut crate::agent::Agent, node_id: usize) {
-        assert!(node_id != 0, "Node ID must not be 0");
+        debug_assert!(node_id != 0, "Node ID must not be 0");
 
         let mut node_id = node_id;
 
@@ -1720,10 +1720,10 @@ impl LoudsTrie {
     /// Internal match implementation for recursive calls.
     fn match_(&self, agent: &mut crate::agent::Agent, node_id: usize) -> bool {
         let query_len = agent.query().length();
-        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
+        let mut query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
 
-        assert!(query_pos < query_len, "Query position out of bounds");
-        assert!(node_id != 0, "Node ID must not be 0");
+        debug_assert!(query_pos < query_len, "Query position out of bounds");
+        debug_assert!(node_id != 0, "Node ID must not be 0");
 
         let mut node_id = node_id;
 
@@ -1736,7 +1736,7 @@ impl LoudsTrie {
                         return false;
                     }
                     // Re-sync local query_pos after match_link may have modified agent state
-                    query_pos = agent.state().expect("Agent must have state").query_pos();
+                    query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
                 } else if self.cache[cache_id].label() == agent.query().as_bytes()[query_pos] {
                     query_pos += 1;
                     agent
@@ -1763,12 +1763,12 @@ impl LoudsTrie {
                         return false;
                     }
                     // Re-sync local query_pos after match_link may have modified agent state
-                    query_pos = agent.state().expect("Agent must have state").query_pos();
+                    query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
                 } else if !self.tail.match_tail(agent, self.get_link_simple(node_id)) {
                     return false;
                 } else {
                     // Re-sync local query_pos after tail.match_tail may have modified agent state
-                    query_pos = agent.state().expect("Agent must have state").query_pos();
+                    query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
                 }
             } else if self.bases[node_id] == agent.query().as_bytes()[query_pos] {
                 query_pos += 1;
@@ -1794,10 +1794,10 @@ impl LoudsTrie {
     #[inline]
     fn prefix_match_(&self, agent: &mut crate::agent::Agent, node_id: usize) -> bool {
         let query_len = agent.query().length();
-        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
+        let mut query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
 
-        assert!(query_pos < query_len, "Query position out of bounds");
-        assert!(node_id != 0, "Node ID must not be 0");
+        debug_assert!(query_pos < query_len, "Query position out of bounds");
+        debug_assert!(node_id != 0, "Node ID must not be 0");
         let mut node_id = node_id;
 
         loop {
@@ -1809,7 +1809,7 @@ impl LoudsTrie {
                         return false;
                     }
                     // Re-sync local query_pos after prefix_match may have modified agent state
-                    query_pos = agent.state().expect("Agent must have state").query_pos();
+                    query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
                 } else if self.cache[cache_id].label() == agent.query().as_bytes()[query_pos] {
                     agent
                         .state_mut()
@@ -1835,7 +1835,7 @@ impl LoudsTrie {
                         return false;
                     }
                     // Re-sync local query_pos after prefix_match may have modified agent state
-                    query_pos = agent.state().expect("Agent must have state").query_pos();
+                    query_pos = unsafe { agent.state().unwrap_unchecked() }.query_pos();
                 } else if self.bases[node_id] == agent.query().as_bytes()[query_pos] {
                     agent
                         .state_mut()
