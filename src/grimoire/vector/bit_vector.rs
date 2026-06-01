@@ -11,13 +11,9 @@
 
 use super::pop_count::{popcount, popcount_unit, Unit};
 use super::rank_index::RankIndex;
+use super::select_bit::select_bit_u64;
 use super::vector::Vector;
 use crate::base::WORD_SIZE;
-
-#[cfg(target_pointer_width = "32")]
-use super::select_bit::select_bit_u32;
-#[cfg(target_pointer_width = "64")]
-use super::select_bit::select_bit_u64;
 
 /// Bit vector supporting rank and select operations.
 ///
@@ -353,26 +349,10 @@ impl BitVector {
         }
 
         // Add popcount of bits in the final partial unit
-        #[cfg(target_pointer_width = "64")]
-        {
-            let bit_offset = i % 64;
-            if bit_offset > 0 {
-                let mask = (1u64 << bit_offset) - 1;
-                offset += popcount(self.units[i / 64] & mask);
-            }
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        {
-            // For 32-bit, need to handle two units per 64-bit block
-            if ((i / 32) & 1) == 1 {
-                offset += popcount_u32(self.units[(i / 32) - 1]);
-            }
-            let bit_offset = i % 32;
-            if bit_offset > 0 {
-                let mask = (1u32 << bit_offset) - 1;
-                offset += popcount_u32(self.units[i / 32] & mask);
-            }
+        let bit_offset = i % 64;
+        if bit_offset > 0 {
+            let mask = (1u64 << bit_offset) - 1;
+            offset += popcount(self.units[i / 64] & mask);
         }
 
         offset
@@ -450,10 +430,7 @@ impl BitVector {
                 let zero_bit_id = (0usize.wrapping_sub(num_0s)) % 512;
                 if unit_num_0s > zero_bit_id {
                     // Use select_bit to find actual position of the zero_bit_id-th 0-bit
-                    #[cfg(target_pointer_width = "64")]
                     let pos = select_bit_u64(zero_bit_id, bit_id, !unit);
-                    #[cfg(target_pointer_width = "32")]
-                    let pos = select_bit_u32(zero_bit_id, bit_id, !unit);
                     self.select0s.push_back(pos as u32);
                 }
 
@@ -464,10 +441,7 @@ impl BitVector {
                 let one_bit_id = (0usize.wrapping_sub(num_1s)) % 512;
                 if unit_num_1s > one_bit_id {
                     // Use select_bit to find actual position of the one_bit_id-th 1-bit
-                    #[cfg(target_pointer_width = "64")]
                     let pos = select_bit_u64(one_bit_id, bit_id, unit);
-                    #[cfg(target_pointer_width = "32")]
-                    let pos = select_bit_u32(one_bit_id, bit_id, unit);
                     self.select1s.push_back(pos as u32);
                 }
             }
@@ -530,7 +504,6 @@ impl BitVector {
     /// # Panics
     ///
     /// Panics if the select0 index is empty or if i >= num_0s()
-    #[cfg(target_pointer_width = "64")]
     pub fn select0(&self, mut i: usize) -> usize {
         debug_assert!(!self.select0s.empty(), "Select0 index not built");
         debug_assert!(i < self.num_0s(), "Index out of bounds");
@@ -618,7 +591,6 @@ impl BitVector {
     /// # Panics
     ///
     /// Panics if the select1 index is empty or if i >= num_1s()
-    #[cfg(target_pointer_width = "64")]
     pub fn select1(&self, mut i: usize) -> usize {
         debug_assert!(!self.select1s.empty(), "Select1 index not built");
         debug_assert!(i < self.num_1s(), "Index out of bounds");
@@ -879,7 +851,6 @@ mod tests {
         bv.rank1(1); // Should panic - index not built
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_bit_vector_select1_basic() {
         let mut bv = BitVector::new();
@@ -907,7 +878,6 @@ mod tests {
         assert_eq!(bv.select1(3), 9);
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_bit_vector_select0_basic() {
         let mut bv = BitVector::new();
@@ -936,7 +906,6 @@ mod tests {
         assert_eq!(bv.select0(4), 7);
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_bit_vector_select1_large() {
         let mut bv = BitVector::new();
@@ -957,7 +926,6 @@ mod tests {
         }
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_bit_vector_select0_large() {
         let mut bv = BitVector::new();
@@ -978,7 +946,6 @@ mod tests {
         }
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_bit_vector_select1_all_ones() {
         let mut bv = BitVector::new();
@@ -995,7 +962,6 @@ mod tests {
         }
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_bit_vector_select0_all_zeros() {
         let mut bv = BitVector::new();
@@ -1012,7 +978,6 @@ mod tests {
         }
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     #[should_panic(expected = "Select1 index not built")]
     fn test_bit_vector_select1_without_build() {
@@ -1022,7 +987,6 @@ mod tests {
         bv.select1(0); // Should panic
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     #[should_panic(expected = "Select0 index not built")]
     fn test_bit_vector_select0_without_build() {

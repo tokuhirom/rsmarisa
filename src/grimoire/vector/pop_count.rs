@@ -37,26 +37,16 @@ pub fn popcount_u32(x: u32) -> usize {
     x.count_ones() as usize
 }
 
-/// Type alias for the unit type used in bit vectors based on word size.
-#[cfg(target_pointer_width = "64")]
+/// Type alias for the unit type used in bit vectors.
+///
+/// rsmarisa fixes the bit-vector word at 64 bits on every target (see
+/// [`crate::base::WORD_SIZE`]), so `Unit` is always `u64`.
 pub type Unit = u64;
 
-#[cfg(target_pointer_width = "32")]
-pub type Unit = u32;
-
 /// Counts the number of set bits in a Unit value.
-///
-/// The Unit type is u64 on 64-bit platforms and u32 on 32-bit platforms.
 #[inline]
 pub fn popcount_unit(x: Unit) -> usize {
-    #[cfg(target_pointer_width = "64")]
-    {
-        popcount(x)
-    }
-    #[cfg(target_pointer_width = "32")]
-    {
-        popcount_u32(x)
-    }
+    popcount(x)
 }
 
 #[cfg(test)]
@@ -87,30 +77,13 @@ mod tests {
         assert_eq!(popcount_unit(0), 0);
         assert_eq!(popcount_unit(1), 1);
         assert_eq!(popcount_unit(0b1010), 2);
-
-        #[cfg(target_pointer_width = "64")]
-        {
-            assert_eq!(popcount_unit(u64::MAX), 64);
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        {
-            assert_eq!(popcount_unit(u32::MAX), 32);
-        }
+        assert_eq!(popcount_unit(u64::MAX), 64);
     }
 
     #[test]
     fn test_word_size_consistency() {
-        #[cfg(target_pointer_width = "64")]
-        {
-            assert_eq!(WORD_SIZE, 64);
-            assert_eq!(std::mem::size_of::<Unit>(), 8);
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        {
-            assert_eq!(WORD_SIZE, 32);
-            assert_eq!(std::mem::size_of::<Unit>(), 4);
-        }
+        // Word size and Unit are fixed at 64 bits on every target.
+        assert_eq!(WORD_SIZE, 64);
+        assert_eq!(std::mem::size_of::<Unit>(), 8);
     }
 }
