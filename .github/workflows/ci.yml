@@ -102,6 +102,23 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
 
+  wasm:
+    name: WASM build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Check WASM build (no default features, no mmap)
+        run: cargo check --lib --no-default-features --target wasm32-unknown-unknown
+
+      - name: Check WASM build (default features)
+        run: cargo check --lib --target wasm32-unknown-unknown
+
   binary-compat:
     name: Binary Compatibility with C++ marisa-trie
     runs-on: ubuntu-latest

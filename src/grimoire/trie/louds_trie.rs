@@ -49,6 +49,11 @@ pub struct LoudsTrie {
     /// Rust drops fields in declaration order (top to bottom), so placing
     /// this last ensures all data structures are dropped before the Mapper,
     /// preventing dangling references to mmap'd memory.
+    ///
+    /// Only file-backed `mmap()` needs to keep the Mapper alive, so this field
+    /// exists only with the `mmap` feature. `map()` borrows `&'static` data
+    /// that outlives the trie regardless.
+    #[cfg(feature = "mmap")]
     mapper: Option<Mapper>,
 }
 
@@ -73,6 +78,7 @@ impl LoudsTrie {
             cache_mask: 0,
             num_l1_nodes: 0,
             config: Config::new(),
+            #[cfg(feature = "mmap")]
             mapper: None,
         }
     }
@@ -865,6 +871,9 @@ impl LoudsTrie {
     /// # Errors
     ///
     /// Returns an error if the file cannot be opened/mapped or data is invalid.
+    ///
+    /// Requires the `mmap` feature (enabled by default; unavailable on WASM).
+    #[cfg(feature = "mmap")]
     pub fn mmap(&mut self, filename: &str) -> std::io::Result<()> {
         let mut mapper = Mapper::open_file(filename)?;
         use crate::grimoire::trie::header::Header;

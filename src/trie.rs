@@ -100,6 +100,9 @@ impl Trie {
     /// let mut trie = Trie::new();
     /// trie.mmap("dictionary.marisa").unwrap();
     /// ```
+    ///
+    /// Requires the `mmap` feature (enabled by default; unavailable on WASM).
+    #[cfg(feature = "mmap")]
     pub fn mmap(&mut self, filename: &str) -> std::io::Result<()> {
         let mut temp = Box::new(LoudsTrie::new());
         temp.mmap(filename)?;
@@ -816,6 +819,7 @@ mod tests {
         assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidData);
     }
 
+    #[cfg(feature = "mmap")]
     #[test]
     fn test_trie_mmap() {
         // Rust-specific: Test memory-mapped file loading
@@ -865,6 +869,7 @@ mod tests {
         assert!(!trie2.lookup(&mut agent));
     }
 
+    #[cfg(feature = "mmap")]
     #[test]
     fn test_trie_mmap_vs_load_equivalence() {
         // Rust-specific: Verify that mmap() and load() produce identical behavior
@@ -925,6 +930,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "mmap")]
     #[test]
     fn test_trie_mmap_file_not_found() {
         // Rust-specific: Test that mmap with non-existent file returns error

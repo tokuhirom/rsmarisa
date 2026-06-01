@@ -21,7 +21,7 @@ use crate::base::WORD_SIZE;
 /// rank and select operations through index structures.
 #[derive(Default)]
 pub struct BitVector {
-    /// Storage for bits, packed into Units (u32 or u64 depending on platform).
+    /// Storage for bits, packed into 64-bit Units.
     units: Vector<Unit>,
     /// Number of bits currently stored.
     size: usize,
@@ -64,9 +64,9 @@ impl BitVector {
             "BitVector size cannot exceed u32::MAX"
         );
 
-        // Expand units if needed
+        // Expand units if needed (one 64-bit unit at a time)
         if self.size == WORD_SIZE * self.units.size() {
-            self.units.resize(self.units.size() + (64 / WORD_SIZE), 0);
+            self.units.resize(self.units.size() + 1, 0);
         }
 
         // Set the bit if true

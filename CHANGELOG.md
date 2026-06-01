@@ -28,6 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- WASM support. `memmap2` is now an optional dependency behind the default-on
+  `mmap` feature; building with `--no-default-features` produces a crate with no
+  `memmap2` dependency that compiles for `wasm32`. Dictionaries built natively
+  (64-bit) are loaded on WASM via `Trie::map()` from a host-provided buffer, and
+  verified end-to-end under a WASI runtime. `Trie::mmap()` / `LoudsTrie::mmap()`
+  require the `mmap` feature. Builds on the WASM groundwork from @nyanrus's
+  exploration in #20.
+
 ### Fixed
 
 - Fixed the bit-vector word size at 64 bits on every target instead of following

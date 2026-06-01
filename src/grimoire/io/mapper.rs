@@ -6,9 +6,26 @@
 //!
 //! Mapper provides read-only access to data through memory mapping.
 //! This implementation supports both file-backed memory mapping and borrowed memory.
+//!
+//! When the `mmap` feature is disabled (e.g., for WASM), only borrowed memory
+//! mode is available. File-backed memory mapping requires the `mmap` feature.
+//!
+//! ## WASM Usage
+//!
+//! On WASM targets, memory mapping is unavailable. Instead, load trie data
+//! from the host environment and pass it as a byte slice:
+//!
+//! - **Browser**: Fetch the `.marisa` file as `Uint8Array` via `fetch()`,
+//!   then pass the buffer into WASM → `Mapper::open_memory()`.
+//! - **WASI**: Read the file via WASI filesystem APIs into a `Vec<u8>`,
+//!   then use `Mapper::open_memory()`.
+//! - **Embedded (WAMR)**: The host copies trie data into WASM linear memory,
+//!   and the module accesses it via `Mapper::open_memory()`.
+//!
+//! See also: [WAMR host data sharing](https://bytecodealliance.github.io/wamr.dev/blog/the-wasm-host-sharing-data-basics/)
 
+#[cfg(feature = "mmap")]
 use memmap2::Mmap;
-use std::fs::File;
 use std::io;
 
 /// Mapper for memory-mapped data access.
@@ -17,10 +34,11 @@ use std::io;
 /// deserializing trie structures from memory or files.
 ///
 /// The mapper can work in two modes:
-/// - File-backed memory mapping using `memmap2::Mmap`
+/// - File-backed memory mapping using `memmap2::Mmap` (requires `mmap` feature)
 /// - Borrowed memory slices (for testing or in-memory data)
 pub struct Mapper {
-    /// File-backed memory map.
+    /// File-backed memory map (only available with `mmap` feature).
+    #[cfg(feature = "mmap")]
     mmap: Option<Mmap>,
     /// Borrowed memory reference (static lifetime for safety).
     borrowed: Option<&'static [u8]>,
@@ -38,6 +56,7 @@ impl Mapper {
     /// Creates a new empty mapper.
     pub fn new() -> Self {
         Mapper {
+            #[cfg(feature = "mmap")]
             mmap: None,
             borrowed: None,
             position: 0,
@@ -53,6 +72,7 @@ impl Mapper {
     /// # Errors
     ///
     /// Returns an error if the file cannot be opened or mapped.
+    /// On WASM (without the `mmap` feature), always returns an error.
     ///
     /// # Safety
     ///
@@ -62,7 +82,9 @@ impl Mapper {
     ///
     /// The caller must ensure that the file is not modified during the lifetime
     /// of the Mapper. Files should be opened read-only.
+    #[cfg(feature = "mmap")]
     pub fn open_file(filename: &str) -> io::Result<Self> {
+        use std::fs::File;
         let file = File::open(filename)?;
         let mmap = unsafe { Mmap::map(&file)? };
         Ok(Mapper {
@@ -70,6 +92,19 @@ impl Mapper {
             borrowed: None,
             position: 0,
         })
+    }
+
+    /// Opens a mapper from a file.
+    ///
+    /// Without the `mmap` feature, file-backed mapping is not available.
+    /// Returns an error indicating mmap is not supported.
+    #[cfg(not(feature = "mmap"))]
+    pub fn open_file(filename: &str) -> io::Result<Self> {
+        let _ = filename;
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "File-backed memory mapping requires the 'mmap' feature (not available on WASM)",
+        ))
     }
 
     /// Opens a mapper from a byte slice.
@@ -84,6 +119,7 @@ impl Mapper {
     /// the mapper and any structures that reference it.
     pub fn open_memory(data: &'static [u8]) -> Self {
         Mapper {
+            #[cfg(feature = "mmap")]
             mmap: None,
             borrowed: Some(data),
             position: 0,
@@ -108,11 +144,11 @@ impl Mapper {
     ///
     /// Returns the data from either the memory map or borrowed slice.
     fn data(&self) -> &[u8] {
-        self.mmap
-            .as_ref()
-            .map(|m| &m[..])
-            .or(self.borrowed)
-            .unwrap_or(&[])
+        #[cfg(feature = "mmap")]
+        if let Some(ref m) = self.mmap {
+            return &m[..];
+        }
+        self.borrowed.unwrap_or(&[])
     }
 
     /// Maps a single value of type T from the current position.
@@ -248,7 +284,11 @@ impl Mapper {
 
     /// Checks if the mapper is open.
     pub fn is_open(&self) -> bool {
-        self.mmap.is_some() || self.borrowed.is_some()
+        #[cfg(feature = "mmap")]
+        if self.mmap.is_some() {
+            return true;
+        }
+        self.borrowed.is_some()
     }
 
     /// Returns the current position.
@@ -263,13 +303,17 @@ impl Mapper {
 
     /// Closes the mapper.
     pub fn clear(&mut self) {
-        self.mmap = None;
+        #[cfg(feature = "mmap")]
+        {
+            self.mmap = None;
+        }
         self.borrowed = None;
         self.position = 0;
     }
 
     /// Swaps with another mapper.
     pub fn swap(&mut self, other: &mut Mapper) {
+        #[cfg(feature = "mmap")]
         std::mem::swap(&mut self.mmap, &mut other.mmap);
         std::mem::swap(&mut self.borrowed, &mut other.borrowed);
         std::mem::swap(&mut self.position, &mut other.position);
@@ -298,6 +342,7 @@ mod tests {
         assert_eq!(mapper.position(), 0);
     }
 
+    #[cfg(feature = "mmap")]
     #[test]
     fn test_mapper_open_file() {
         // Create a temporary file
@@ -314,6 +359,7 @@ mod tests {
         assert_eq!(mapper.position(), 0);
     }
 
+    #[cfg(feature = "mmap")]
     #[test]
     fn test_mapper_open_file_not_found() {
         let result = Mapper::open_file("/nonexistent/file.dat");
@@ -483,6 +529,7 @@ mod tests {
         assert!(!mapper.is_open());
     }
 
+    #[cfg(feature = "mmap")]
     #[test]
     fn test_mapper_file_mapping() {
         // Create a temporary file with some data
