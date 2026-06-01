@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.1](https://github.com/tokuhirom/rsmarisa/compare/v0.4.0...v0.4.1) - 2026-06-01
+- perf: shrink hot-path overhead in trie lookup by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/21
+- perf: optimize hot-path functions and add bench example by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/16
+- feat(io): allow Reader/Writer to accept non-'static Read/Write implementations by @WhiredPlanck in https://github.com/tokuhirom/rsmarisa/pull/19
+
 ## [v0.4.0](https://github.com/tokuhirom/rsmarisa/compare/v0.3.0...v0.4.0) - 2026-02-07
 - perf: optimize hot-path functions for search operations by @tokuhirom in https://github.com/tokuhirom/rsmarisa/pull/15
 
