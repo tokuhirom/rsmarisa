@@ -1188,17 +1188,19 @@ impl LoudsTrie {
         let query_pos = state.query_pos();
         let query_len = agent.query().length();
 
-        assert!(query_pos < query_len, "Query position out of bounds");
+        debug_assert!(query_pos < query_len, "Query position out of bounds");
 
         let node_id = state.node_id();
         let query_char = agent.query().as_bytes()[query_pos];
 
-        // Check cache first
+        // Check cache first. Copy the entry (12B) so subsequent field reads
+        // hit registers/stack instead of repeating the Vector bounds check.
         let cache_id = self.get_cache_id_with_label(node_id, query_char);
-        if node_id == self.cache[cache_id].parent() {
+        let cache_entry = self.cache[cache_id];
+        if node_id == cache_entry.parent() {
             use crate::base::INVALID_EXTRA;
-            if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
-                if !self.match_link(agent, self.cache[cache_id].link()) {
+            if cache_entry.extra() != INVALID_EXTRA as usize {
+                if !self.match_link(agent, cache_entry.link()) {
                     return false;
                 }
             } else {
@@ -1211,7 +1213,7 @@ impl LoudsTrie {
             agent
                 .state_mut()
                 .expect("Agent must have state")
-                .set_node_id(self.cache[cache_id].child());
+                .set_node_id(cache_entry.child());
             return true;
         }
 
@@ -1514,30 +1516,32 @@ impl LoudsTrie {
         let query_pos = state.query_pos();
         let query_len = agent.query().length();
 
-        assert!(query_pos < query_len, "Query position out of bounds");
+        debug_assert!(query_pos < query_len, "Query position out of bounds");
 
         let node_id = state.node_id();
         let query_char = agent.query().as_bytes()[query_pos];
 
-        // Check cache first
+        // Check cache first. Copy the entry (12B) so subsequent field reads
+        // hit registers/stack instead of repeating the Vector bounds check.
         let cache_id = self.get_cache_id_with_label(node_id, query_char);
-        if node_id == self.cache[cache_id].parent() {
+        let cache_entry = self.cache[cache_id];
+        if node_id == cache_entry.parent() {
             use crate::base::INVALID_EXTRA;
-            if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
+            if cache_entry.extra() != INVALID_EXTRA as usize {
                 let _ = state;
-                if !self.prefix_match(agent, self.cache[cache_id].link()) {
+                if !self.prefix_match(agent, cache_entry.link()) {
                     return false;
                 }
             } else {
                 let _ = state;
                 let state = agent.state_mut().expect("Agent must have state");
-                state.key_buf_mut().push(self.cache[cache_id].label());
+                state.key_buf_mut().push(cache_entry.label());
                 state.set_query_pos(query_pos + 1);
             }
             agent
                 .state_mut()
                 .expect("Agent must have state")
-                .set_node_id(self.cache[cache_id].child());
+                .set_node_id(cache_entry.child());
             return true;
         }
 
@@ -1681,25 +1685,26 @@ impl LoudsTrie {
     /// Internal restore implementation for recursive calls.
     #[inline]
     fn restore_(&self, agent: &mut crate::agent::Agent, node_id: usize) {
-        assert!(node_id != 0, "Node ID must not be 0");
+        debug_assert!(node_id != 0, "Node ID must not be 0");
 
         let mut node_id = node_id;
 
         loop {
             let cache_id = self.get_cache_id(node_id);
-            if node_id == self.cache[cache_id].child() {
+            let cache_entry = self.cache[cache_id];
+            if node_id == cache_entry.child() {
                 use crate::base::INVALID_EXTRA;
-                if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
-                    self.restore(agent, self.cache[cache_id].link());
+                if cache_entry.extra() != INVALID_EXTRA as usize {
+                    self.restore(agent, cache_entry.link());
                 } else {
                     agent
                         .state_mut()
                         .expect("Agent must have state")
                         .key_buf_mut()
-                        .push(self.cache[cache_id].label());
+                        .push(cache_entry.label());
                 }
 
-                node_id = self.cache[cache_id].parent();
+                node_id = cache_entry.parent();
                 if node_id == 0 {
                     return;
                 }
@@ -1728,22 +1733,23 @@ impl LoudsTrie {
         let query_len = agent.query().length();
         let mut query_pos = agent.state().expect("Agent must have state").query_pos();
 
-        assert!(query_pos < query_len, "Query position out of bounds");
-        assert!(node_id != 0, "Node ID must not be 0");
+        debug_assert!(query_pos < query_len, "Query position out of bounds");
+        debug_assert!(node_id != 0, "Node ID must not be 0");
 
         let mut node_id = node_id;
 
         loop {
             let cache_id = self.get_cache_id(node_id);
-            if node_id == self.cache[cache_id].child() {
+            let cache_entry = self.cache[cache_id];
+            if node_id == cache_entry.child() {
                 use crate::base::INVALID_EXTRA;
-                if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
-                    if !self.match_link(agent, self.cache[cache_id].link()) {
+                if cache_entry.extra() != INVALID_EXTRA as usize {
+                    if !self.match_link(agent, cache_entry.link()) {
                         return false;
                     }
                     // Re-sync local query_pos after match_link may have modified agent state
                     query_pos = agent.state().expect("Agent must have state").query_pos();
-                } else if self.cache[cache_id].label() == agent.query().as_bytes()[query_pos] {
+                } else if cache_entry.label() == agent.query().as_bytes()[query_pos] {
                     query_pos += 1;
                     agent
                         .state_mut()
@@ -1753,7 +1759,7 @@ impl LoudsTrie {
                     return false;
                 }
 
-                node_id = self.cache[cache_id].parent();
+                node_id = cache_entry.parent();
                 if node_id == 0 {
                     return true;
                 }
@@ -1802,26 +1808,27 @@ impl LoudsTrie {
         let query_len = agent.query().length();
         let mut query_pos = agent.state().expect("Agent must have state").query_pos();
 
-        assert!(query_pos < query_len, "Query position out of bounds");
-        assert!(node_id != 0, "Node ID must not be 0");
+        debug_assert!(query_pos < query_len, "Query position out of bounds");
+        debug_assert!(node_id != 0, "Node ID must not be 0");
         let mut node_id = node_id;
 
         loop {
             let cache_id = self.get_cache_id(node_id);
-            if node_id == self.cache[cache_id].child() {
+            let cache_entry = self.cache[cache_id];
+            if node_id == cache_entry.child() {
                 use crate::base::INVALID_EXTRA;
-                if self.cache[cache_id].extra() != INVALID_EXTRA as usize {
-                    if !self.prefix_match(agent, self.cache[cache_id].link()) {
+                if cache_entry.extra() != INVALID_EXTRA as usize {
+                    if !self.prefix_match(agent, cache_entry.link()) {
                         return false;
                     }
                     // Re-sync local query_pos after prefix_match may have modified agent state
                     query_pos = agent.state().expect("Agent must have state").query_pos();
-                } else if self.cache[cache_id].label() == agent.query().as_bytes()[query_pos] {
+                } else if cache_entry.label() == agent.query().as_bytes()[query_pos] {
                     agent
                         .state_mut()
                         .expect("Agent must have state")
                         .key_buf_mut()
-                        .push(self.cache[cache_id].label());
+                        .push(cache_entry.label());
                     query_pos += 1;
                     agent
                         .state_mut()
@@ -1831,7 +1838,7 @@ impl LoudsTrie {
                     return false;
                 }
 
-                node_id = self.cache[cache_id].parent();
+                node_id = cache_entry.parent();
                 if node_id == 0 {
                     return true;
                 }
