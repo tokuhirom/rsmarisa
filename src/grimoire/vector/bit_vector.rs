@@ -100,7 +100,7 @@ impl BitVector {
     /// Panics if `i >= size()`
     #[inline]
     pub fn get(&self, i: usize) -> bool {
-        assert!(i < self.size, "Index out of bounds");
+        debug_assert!(i < self.size, "Index out of bounds");
         let unit_index = i / WORD_SIZE;
         let bit_offset = i % WORD_SIZE;
         (self.units[unit_index] & ((1 as Unit) << bit_offset)) != 0
@@ -312,8 +312,8 @@ impl BitVector {
     /// Panics if the ranks index is empty or if i > size()
     #[inline]
     pub fn rank0(&self, i: usize) -> usize {
-        assert!(!self.ranks.empty(), "Rank index not built");
-        assert!(i <= self.size, "Index out of bounds");
+        debug_assert!(!self.ranks.empty(), "Rank index not built");
+        debug_assert!(i <= self.size, "Index out of bounds");
         i - self.rank1(i)
     }
 
@@ -332,9 +332,10 @@ impl BitVector {
     /// # Panics
     ///
     /// Panics if the ranks index is empty or if i > size()
+    #[inline]
     pub fn rank1(&self, i: usize) -> usize {
-        assert!(!self.ranks.empty(), "Rank index not built");
-        assert!(i <= self.size, "Index out of bounds");
+        debug_assert!(!self.ranks.empty(), "Rank index not built");
+        debug_assert!(i <= self.size, "Index out of bounds");
 
         let rank_index = &self.ranks[i / 512];
         let mut offset = rank_index.abs();
@@ -777,6 +778,7 @@ mod tests {
         assert!(bv2.get(0));
     }
 
+    #[cfg(debug_assertions)]
     #[test]
     #[should_panic(expected = "Index out of bounds")]
     fn test_bit_vector_out_of_bounds() {
@@ -868,6 +870,7 @@ mod tests {
         assert_eq!(bv.rank0(1000), 1000 - expected_rank1_at_1000);
     }
 
+    #[cfg(debug_assertions)]
     #[test]
     #[should_panic(expected = "Rank index not built")]
     fn test_bit_vector_rank_without_build() {
