@@ -125,6 +125,27 @@ impl Agent {
         self.state.as_deref_mut()
     }
 
+    /// Returns the query bytes alongside a mutable reference to the state.
+    ///
+    /// This is a borrow-splitting helper for inner loops in tail/trie matching
+    /// that need to read query bytes while updating the state — calling
+    /// `agent.query()` and `agent.state_mut()` separately would force callers
+    /// to clone the query into a temporary `Vec` to satisfy the borrow checker.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the agent has no state initialized.
+    #[inline]
+    pub fn query_bytes_and_state_mut(&mut self) -> (&[u8], &mut State) {
+        // Borrow each field directly so the compiler treats them as disjoint.
+        let bytes = self.query.as_bytes();
+        let state = self
+            .state
+            .as_deref_mut()
+            .expect("Agent must have state initialized");
+        (bytes, state)
+    }
+
     /// Sets the key from a string slice.
     pub fn set_key_str(&mut self, s: &str) {
         self.key.set_str(s);

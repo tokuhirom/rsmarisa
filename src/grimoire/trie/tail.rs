@@ -333,11 +333,13 @@ impl Tail {
             return false;
         }
 
-        // Get query bytes to avoid borrow conflicts
-        let query_bytes = agent.query().as_bytes().to_vec();
-        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
+        // Split-borrow query bytes and state in one shot. Avoids cloning the
+        // query into a temporary Vec per call — match_tail runs inside the
+        // hot trie-lookup loop, so allocations show up clearly in profiles.
+        let (query_bytes, state) = agent.query_bytes_and_state_mut();
+        let mut query_pos = state.query_pos();
 
-        assert!(
+        debug_assert!(
             query_pos < query_bytes.len(),
             "Query position out of bounds"
         );
@@ -353,26 +355,27 @@ impl Tail {
                 // Access buf[offset + (query_pos - initial_query_pos)]
                 let buf_index = offset + (query_pos - initial_query_pos);
                 if buf_index >= self.buf.size() {
+                    state.set_query_pos(query_pos);
                     return false; // Unexpected end of buffer
                 }
                 if self.buf[buf_index] != query_bytes[query_pos] {
+                    state.set_query_pos(query_pos);
                     return false; // Mismatch
                 }
                 query_pos += 1;
-                agent
-                    .state_mut()
-                    .expect("Agent must have state")
-                    .set_query_pos(query_pos);
 
                 let buf_index = offset + (query_pos - initial_query_pos);
                 if buf_index >= self.buf.size() {
+                    state.set_query_pos(query_pos);
                     return false; // Unexpected end of buffer
                 }
                 if self.buf[buf_index] == 0 {
+                    state.set_query_pos(query_pos);
                     return true; // Found null terminator
                 }
 
                 if query_pos >= query_bytes.len() {
+                    state.set_query_pos(query_pos);
                     return false; // Query exhausted but no null terminator
                 }
             }
@@ -381,22 +384,21 @@ impl Tail {
             let mut i = offset;
             loop {
                 if self.buf[i] != query_bytes[query_pos] {
+                    state.set_query_pos(query_pos);
                     return false;
                 }
                 query_pos += 1;
-                agent
-                    .state_mut()
-                    .expect("Agent must have state")
-                    .set_query_pos(query_pos);
 
                 let is_end = self.end_flags.get(i);
                 i += 1;
 
                 if is_end {
+                    state.set_query_pos(query_pos);
                     return true;
                 }
 
                 if query_pos >= query_bytes.len() {
+                    state.set_query_pos(query_pos);
                     return false;
                 }
             }
@@ -418,25 +420,26 @@ impl Tail {
             return false;
         }
 
-        // Get query bytes to avoid borrow conflicts
-        let query_bytes = agent.query().as_bytes().to_vec();
-        let mut query_pos = agent.state().expect("Agent must have state").query_pos();
+        // Split-borrow query bytes and state; avoids cloning the query into a
+        // temporary Vec on the hot trie-lookup path.
+        let (query_bytes, state) = agent.query_bytes_and_state_mut();
+        let mut query_pos = state.query_pos();
 
         if self.end_flags.empty() {
             // Text mode
             let start_offset = offset - query_pos;
             loop {
                 if self.buf[start_offset + query_pos] != query_bytes[query_pos] {
+                    state.set_query_pos(query_pos);
                     return false;
                 }
-                let state = agent.state_mut().expect("Agent must have state");
                 state.key_buf_mut().push(self.buf[start_offset + query_pos]);
                 query_pos += 1;
-                state.set_query_pos(query_pos);
 
                 if start_offset + query_pos >= self.buf.size()
                     || self.buf[start_offset + query_pos] == 0
                 {
+                    state.set_query_pos(query_pos);
                     return true;
                 }
 
@@ -446,7 +449,7 @@ impl Tail {
             }
 
             // Append rest of tail
-            let state = agent.state_mut().expect("Agent must have state");
+            state.set_query_pos(query_pos);
             let mut i = start_offset + query_pos;
             while i < self.buf.size() && self.buf[i] != 0 {
                 state.key_buf_mut().push(self.buf[i]);
@@ -458,17 +461,17 @@ impl Tail {
             let mut i = offset;
             loop {
                 if self.buf[i] != query_bytes[query_pos] {
+                    state.set_query_pos(query_pos);
                     return false;
                 }
-                let state = agent.state_mut().expect("Agent must have state");
                 state.key_buf_mut().push(self.buf[i]);
                 query_pos += 1;
-                state.set_query_pos(query_pos);
 
                 let is_end = self.end_flags.get(i);
                 i += 1;
 
                 if is_end {
+                    state.set_query_pos(query_pos);
                     return true;
                 }
 
@@ -478,7 +481,7 @@ impl Tail {
             }
 
             // Append rest of tail
-            let state = agent.state_mut().expect("Agent must have state");
+            state.set_query_pos(query_pos);
             loop {
                 state.key_buf_mut().push(self.buf[i]);
                 if self.end_flags.get(i) {

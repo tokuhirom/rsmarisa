@@ -75,7 +75,7 @@ impl State {
     /// Panics if node_id > u32::MAX
     #[inline]
     pub fn set_node_id(&mut self, node_id: usize) {
-        assert!(node_id <= u32::MAX as usize, "Node ID exceeds u32::MAX");
+        debug_assert!(node_id <= u32::MAX as usize, "Node ID exceeds u32::MAX");
         self.node_id = node_id as u32;
     }
 
@@ -90,7 +90,7 @@ impl State {
     /// Panics if query_pos > u32::MAX
     #[inline]
     pub fn set_query_pos(&mut self, query_pos: usize) {
-        assert!(
+        debug_assert!(
             query_pos <= u32::MAX as usize,
             "Query position exceeds u32::MAX"
         );
@@ -108,7 +108,7 @@ impl State {
     /// Panics if history_pos > u32::MAX
     #[inline]
     pub fn set_history_pos(&mut self, history_pos: usize) {
-        assert!(
+        debug_assert!(
             history_pos <= u32::MAX as usize,
             "History position exceeds u32::MAX"
         );
