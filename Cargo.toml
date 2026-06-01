@@ -44,6 +44,10 @@ name = "save_load"
 path = "examples/save_load.rs"
 required-features = []
 
+[[example]]
+name = "bench"
+path = "examples/bench.rs"
+
 # CLI Tools
 [[bin]]
 name = "rsmarisa-build"
