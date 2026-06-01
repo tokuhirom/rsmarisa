@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the bit-vector word size at 64 bits on every target instead of following
+  the platform pointer width. The previous 32-bit code paths were incomplete
+  (missing `select0`/`select1`) and would have produced an on-disk format
+  incompatible with dictionaries built on 64-bit machines. The library now
+  compiles and reads 64-bit-built dictionaries correctly on 32-bit targets such
+  as `wasm32`. No change to behavior or output on 64-bit platforms
+  (byte-for-byte identical).
+
 ### Changed
 
 - **BREAKING**: Library name changed from `marisa` to `rsmarisa` to align with package name

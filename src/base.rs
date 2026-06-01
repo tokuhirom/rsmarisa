@@ -7,12 +7,14 @@
 
 use std::fmt;
 
-/// Word size in bits (32 or 64) based on pointer size.
-#[cfg(target_pointer_width = "64")]
+/// Word size in bits used by the trie's bit vectors.
+///
+/// Unlike C++ marisa (whose `MARISA_WORD_SIZE` follows the CPU architecture),
+/// rsmarisa always uses 64-bit words on every target. Dictionaries are almost
+/// always built on 64-bit machines, so fixing the word size at 64 keeps the
+/// on-disk format identical across targets — including 32-bit ones such as
+/// `wasm32`, which can then read dictionaries built natively.
 pub const WORD_SIZE: usize = 64;
-
-#[cfg(target_pointer_width = "32")]
-pub const WORD_SIZE: usize = 32;
 
 /// Invalid link ID constant.
 pub const INVALID_LINK_ID: u32 = u32::MAX;
@@ -194,9 +196,8 @@ mod tests {
     #[test]
     #[allow(clippy::assertions_on_constants)]
     fn test_word_size() {
-        // Word size should be either 32 or 64
-        assert!(WORD_SIZE == 32 || WORD_SIZE == 64);
-        assert_eq!(WORD_SIZE, std::mem::size_of::<usize>() * 8);
+        // Word size is fixed at 64 on every target (see WORD_SIZE docs).
+        assert_eq!(WORD_SIZE, 64);
     }
 
     #[test]

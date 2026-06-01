@@ -84,7 +84,6 @@ fn select_bit_u64_table(i: usize, bit_id: usize, unit: u64) -> usize {
 /// # Returns
 ///
 /// The absolute position of the i-th set bit.
-#[cfg(target_pointer_width = "64")]
 #[inline]
 pub fn select_bit_u64(i: usize, bit_id: usize, unit: u64) -> usize {
     #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
@@ -103,46 +102,10 @@ pub fn select_bit_u64(i: usize, bit_id: usize, unit: u64) -> usize {
     select_bit_u64_table(i, bit_id, unit)
 }
 
-/// Finds the position of the i-th set bit in a 32-bit unit (for 32-bit platforms).
-///
-/// # Arguments
-///
-/// * `i` - The rank of the bit to find (0-indexed)
-/// * `bit_id` - The starting bit position for this unit
-/// * `unit` - The 32-bit value to search
-///
-/// # Returns
-///
-/// The absolute position of the i-th set bit
-#[cfg(target_pointer_width = "32")]
-#[inline]
-pub fn select_bit_u32(i: usize, bit_id: usize, unit: u32) -> usize {
-    let mut remaining = i;
-    let mut offset = 0usize;
-
-    // Process byte by byte
-    for byte_idx in 0..4 {
-        let byte = ((unit >> (byte_idx * 8)) & 0xFF) as u8;
-        let byte_popcount = byte.count_ones() as usize;
-
-        if remaining < byte_popcount {
-            // The i-th bit is in this byte
-            return bit_id + offset + SELECT_TABLE[remaining][byte as usize] as usize;
-        }
-
-        remaining -= byte_popcount;
-        offset += 8;
-    }
-
-    // Should not reach here if input is valid
-    bit_id + 31
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_select_bit_u64_basic() {
         // 0b00000001 - first bit at position 0
@@ -160,7 +123,6 @@ mod tests {
         assert_eq!(select_bit_u64(1, 0, 0b00000101), 2);
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_select_bit_u64_offset() {
         // Test with non-zero bit_id offset
@@ -168,7 +130,6 @@ mod tests {
         assert_eq!(select_bit_u64(0, 100, 0b00000010), 101);
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_select_bit_u64_multiple_bytes() {
         // 0x0101 = bits at positions 0 and 8
@@ -180,7 +141,6 @@ mod tests {
         assert_eq!(select_bit_u64(7, 0, 0xFF00), 15);
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_select_bit_u64_high_bytes() {
         // Bits in upper bytes
@@ -190,7 +150,6 @@ mod tests {
         assert_eq!(select_bit_u64(2, 0, unit), 63);
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_select_bit_u64_fallback_matches_pdep() {
         // Cross-check fallback against the dispatcher across many inputs.
@@ -212,14 +171,5 @@ mod tests {
                 );
             }
         }
-    }
-
-    #[cfg(target_pointer_width = "32")]
-    #[test]
-    fn test_select_bit_u32_basic() {
-        assert_eq!(select_bit_u32(0, 0, 0b00000001), 0);
-        assert_eq!(select_bit_u32(0, 0, 0b00000010), 1);
-        assert_eq!(select_bit_u32(0, 0, 0b00000011), 0);
-        assert_eq!(select_bit_u32(1, 0, 0b00000011), 1);
     }
 }

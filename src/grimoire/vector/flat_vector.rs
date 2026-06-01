@@ -9,10 +9,9 @@
 use super::vector::Vector;
 use crate::base::WORD_SIZE;
 
-#[cfg(target_pointer_width = "64")]
+// rsmarisa fixes the bit-vector word at 64 bits on every target
+// (see `crate::base::WORD_SIZE`), so the unit is always `u64`.
 type Unit = u64;
-#[cfg(target_pointer_width = "32")]
-type Unit = u32;
 
 /// Flat vector for space-efficient integer storage.
 ///
