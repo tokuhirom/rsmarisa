@@ -234,7 +234,7 @@ impl<T: Copy> Vector<T> {
     /// # Errors
     ///
     /// Returns an error if reading fails.
-    pub fn read(&mut self, reader: &mut Reader) -> std::io::Result<()> {
+    pub fn read(&mut self, reader: &mut Reader<'_>) -> std::io::Result<()> {
         // Read the total size (u64)
         let total_size: u64 = reader.read()?;
 
@@ -281,7 +281,7 @@ impl<T: Copy> Vector<T> {
     /// # Errors
     ///
     /// Returns an error if writing fails.
-    pub fn write(&self, writer: &mut Writer) -> std::io::Result<()> {
+    pub fn write(&self, writer: &mut Writer<'_>) -> std::io::Result<()> {
         // Write total size as u64
         let total = self.total_size() as u64;
         writer.write(&total)?;

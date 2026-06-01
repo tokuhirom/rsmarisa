@@ -226,7 +226,7 @@ impl BitVector {
     /// # Errors
     ///
     /// Returns an error if reading fails or if num_1s > size.
-    pub fn read(&mut self, reader: &mut crate::grimoire::io::Reader) -> std::io::Result<()> {
+    pub fn read(&mut self, reader: &mut crate::grimoire::io::Reader<'_>) -> std::io::Result<()> {
         // Read units
         self.units.read(reader)?;
 
@@ -269,7 +269,7 @@ impl BitVector {
     /// # Errors
     ///
     /// Returns an error if writing fails.
-    pub fn write(&self, writer: &mut crate::grimoire::io::Writer) -> std::io::Result<()> {
+    pub fn write(&self, writer: &mut crate::grimoire::io::Writer<'_>) -> std::io::Result<()> {
         // Write units
         self.units.write(writer)?;
 

@@ -15,14 +15,14 @@ use std::path::Path;
 ///
 /// Writer wraps a std::io::Write implementation and provides convenient
 /// methods for writing typed data and seeking forward with zero padding.
-pub struct Writer {
+pub struct Writer<'a> {
     /// The underlying writer, boxed for trait object support.
-    writer: Option<Box<dyn IoWrite>>,
+    writer: Option<Box<dyn IoWrite + 'a>>,
     /// Optional buffer for in-memory writing (for testing).
     buffer: Option<Vec<u8>>,
 }
 
-impl Writer {
+impl<'a> Writer<'a> {
     /// Creates a new empty writer.
     pub fn new() -> Self {
         Writer {
@@ -40,7 +40,7 @@ impl Writer {
     /// # Errors
     ///
     /// Returns an error if the file cannot be created.
-    pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+    pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Writer<'static>> {
         let file = File::create(path)?;
         Ok(Writer {
             writer: Some(Box::new(file)),
@@ -53,7 +53,7 @@ impl Writer {
     /// # Arguments
     ///
     /// * `writer` - Any type implementing Write
-    pub fn from_writer<W: IoWrite + 'static>(writer: W) -> Self {
+    pub fn from_writer<W: IoWrite + 'a>(writer: W) -> Self {
         Writer {
             writer: Some(Box::new(writer)),
             buffer: None,
@@ -61,7 +61,7 @@ impl Writer {
     }
 
     /// Creates a writer that writes to a `Vec<u8>`.
-    pub fn from_vec(vec: Vec<u8>) -> Self {
+    pub fn from_vec(vec: Vec<u8>) -> Writer<'static> {
         Writer {
             writer: None,
             buffer: Some(vec),
@@ -205,7 +205,7 @@ impl Writer {
     }
 }
 
-impl Default for Writer {
+impl<'a> Default for Writer<'a> {
     fn default() -> Self {
         Self::new()
     }

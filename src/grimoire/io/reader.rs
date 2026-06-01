@@ -15,12 +15,12 @@ use std::path::Path;
 ///
 /// Reader wraps a std::io::Read implementation and provides convenient
 /// methods for reading typed data and seeking forward.
-pub struct Reader {
+pub struct Reader<'a> {
     /// The underlying reader, boxed for trait object support.
-    reader: Option<Box<dyn IoRead>>,
+    reader: Option<Box<dyn IoRead + 'a>>,
 }
 
-impl Reader {
+impl<'a> Reader<'a> {
     /// Creates a new empty reader.
     pub fn new() -> Self {
         Reader { reader: None }
@@ -35,7 +35,7 @@ impl Reader {
     /// # Errors
     ///
     /// Returns an error if the file cannot be opened.
-    pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+    pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Reader<'static>> {
         let file = File::open(path)?;
         Ok(Reader {
             reader: Some(Box::new(file)),
@@ -47,7 +47,7 @@ impl Reader {
     /// # Arguments
     ///
     /// * `reader` - Any type implementing Read
-    pub fn from_reader<R: IoRead + 'static>(reader: R) -> Self {
+    pub fn from_reader<R: IoRead + 'a>(reader: R) -> Self {
         Reader {
             reader: Some(Box::new(reader)),
         }
@@ -58,7 +58,7 @@ impl Reader {
     /// # Arguments
     ///
     /// * `bytes` - Byte slice to read from
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    pub fn from_bytes(bytes: &[u8]) -> Reader<'static> {
         Reader {
             reader: Some(Box::new(io::Cursor::new(bytes.to_vec()))),
         }
@@ -199,7 +199,7 @@ impl Reader {
     }
 }
 
-impl Default for Reader {
+impl<'a> Default for Reader<'a> {
     fn default() -> Self {
         Self::new()
     }
